@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --partition general
 #SBATCH --nodes 1
-#SBATCH --time 12:00:00
+#SBATCH --time 10:00:00
 #SBATCH --ntasks-per-node 1
-#SBATCH --mem-per-cpu 20G
+#SBATCH --mem-per-cpu 8G
 #SBATCH --jupyter-notebook
 #SBATCH --output jupyter-log-%J.log
 
