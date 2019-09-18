@@ -8,13 +8,13 @@ import os
 import pandas as pd
 import numpy as np
 #%%
-#base_root = '/home/rj299/project/mdm_analysis/'
-#data_root = '/home/rj299/project/mdm_analysis/data_rename'
-#out_root = '/home/rj299/project/mdm_analysis/output'
+base_root = '/home/rj299/project/mdm_analysis/'
+data_root = '/home/rj299/project/mdm_analysis/data_rename'
+out_root = '/home/rj299/project/mdm_analysis/output'
 
-base_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\RA_PTSD_SPM'
-data_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\data_rename'
-out_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\output'
+# base_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\RA_PTSD_SPM'
+# data_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\data_rename'
+# out_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\output'
 
 #%%
 from nipype.interfaces import spm
@@ -31,7 +31,7 @@ from nipype import Node, Workflow, MapNode
 from nipype.interfaces.matlab import MatlabCommand
 
 #%%
-MatlabCommand.set_default_paths('C:/Users/rj299/Documents/MATLAB/spm12/') # set default SPM12 path in my computer. 
+MatlabCommand.set_default_paths('/home/rj299/project/MATLAB/toolbox/spm12/') # set default SPM12 path in my computer. 
 
 data_dir = data_root
 output_dir = os.path.join(out_root, 'imaging')
@@ -41,7 +41,7 @@ work_dir = os.path.join(base_root, 'work') # intermediate products
 # task_list = [1,2,3,4,5,6,7,8]
 
 subject_list = [2588]
-task_list = [1]
+task_list = [1, ]
 
 fwhm = 6
 tr = 1
@@ -75,7 +75,7 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
     out_motion = Path('motion.par').resolve()
     
     regress_data = pd.read_csv(regressors_file, sep=r'\s+')
-    np.savetxt(out_motion, regress_data[motion_columns].values, '%g')
+    np.savetxt(out_motion, regress_data[motion_columns].fillna(0.0).values, '%g')
 #     np.savetxt(out_motion, regress_data[motion_columns].fillna(0.0).values, '%g')
     
     if regressors_names is None:
@@ -166,7 +166,7 @@ level1design.inputs.bases = {'hrf': {'derivs': [0, 0]}}
 level1design.inputs.model_serial_correlations = 'AR(1)'
 
 # create workflow
-wfSPM = Workflow(name="l1spm", base_dir=base_root)
+wfSPM = Workflow(name="l1spm", base_dir=work_dir)
 wfSPM.connect([
         (infosource, selectfiles, [('subject_id', 'subject_id'), ('task_id', 'task_id')]),
         (selectfiles, runinfo, [('events','events_file'),('regressors','regressors_file')]),
@@ -201,7 +201,7 @@ wfSPM.connect([
 #%% Adding data sink
 ########################################################################
 # Datasink
-datasink = Node(nio.DataSink(base_directory=os.path.join(base_root, 'Sink')),
+datasink = Node(nio.DataSink(base_directory=os.path.join(output_root, 'Sink')),
                                          name="datasink")
                        
 

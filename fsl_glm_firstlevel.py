@@ -34,7 +34,7 @@ work_dir = os.path.join(base_root, 'work') # intermediate products
 # task_list = [1,2,3,4,5,6,7,8]
 
 subject_list = [2073]
-task_list = [1]
+task_list = [6]
 
 fwhm = 6
 tr = 1
@@ -165,14 +165,14 @@ feat_spec = pe.Node(fsl.FEATModel(), name='feat_spec')
 # feat_fit actually runs FEAT
 feat_fit = pe.Node(fsl.FEAT(), name='feat_fit', mem_gb=5)
 
-## instead of FEAT
-#modelestimate = pe.MapNode(interface=fsl.FILMGLS(smooth_autocorr=True,
+# instead of FEAT
+# modelestimate = pe.MapNode(interface=fsl.FILMGLS(smooth_autocorr=True,
 #                                                 mask_size=5,
 #                                                 threshold=1000),
 #                                                 name='modelestimate',
 #                                                 iterfield = ['design_file',
-#                                                              'in_file',
-#                                                              'tcon_file'])
+#                                                               'in_file',
+#                                                               'tcon_file'])
 
 feat_select = pe.Node(nio.SelectFiles({
     'cope': 'stats/cope*.nii.gz',
@@ -219,8 +219,8 @@ workflow.connect([
         ('fsf_files', 'fsf_file'),
         ('ev_files', 'ev_files')]),
     (l1_model, feat_fit, [('fsf_files', 'fsf_file')]),
-#    (feat_spec,modelestimate,[('design_file','design_file'),
-#                            ('con_file','tcon_file')]),
+    # (feat_spec,modelestimate,[('design_file','design_file'),
+    #                         ('con_file','tcon_file')]),
    
     (feat_fit, feat_select, [('feat_dir', 'base_directory')]),
     (feat_select, ds_cope, [('cope', 'in_file')]),
