@@ -25,13 +25,15 @@ import nipype.pipeline.engine as pe  # pypeline engine
 #import nipype.algorithms.rapidart as ra  # artifact detection
 import nipype.algorithms.modelgen as model  # model specification
 #from nipype.algorithms.rapidart import ArtifactDetect
-from nipype.algorithms.misc import Gunzip
+# from nipype.algorithms.misc import Gunzip
 from nipype import Node, Workflow, MapNode
+from nipype.interfaces import fsl
 
 from nipype.interfaces.matlab import MatlabCommand
 
 #%%
 MatlabCommand.set_default_paths('/home/rj299/project/MATLAB/toolbox/spm12/') # set default SPM12 path in my computer. 
+fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
 
 data_dir = data_root
 output_dir = os.path.join(out_root, 'imaging')
@@ -41,10 +43,12 @@ work_dir = os.path.join(base_root, 'work') # intermediate products
 # task_list = [1,2,3,4,5,6,7,8]
 
 subject_list = [2588]
-task_list = [1, ]
+task_list = [2]
 
 fwhm = 6
 tr = 1
+# first sevetal scans to delete
+del_scan = 10
 
 # Map field names to individual subject runs.
 infosource = pe.Node(util.IdentityInterface(fields=['subject_id', 'task_id'],),
@@ -57,7 +61,7 @@ infosource.iterables = [('subject_id', subject_list),
 def _bids2nipypeinfo(in_file, events_file, regressors_file,
                      regressors_names=None,
                      motion_columns=None,
-                     decimals=3, amplitude=1.0):
+                     decimals=3, amplitude=1.0, del_scan=10):
     from pathlib import Path
     import numpy as np
     import pandas as pd
@@ -75,7 +79,7 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
     out_motion = Path('motion.par').resolve()
     
     regress_data = pd.read_csv(regressors_file, sep=r'\s+')
-    np.savetxt(out_motion, regress_data[motion_columns].fillna(0.0).values, '%g')
+    np.savetxt(out_motion, regress_data[motion_columns].fillna(0.0).values[del_scan:,], '%g')
 #     np.savetxt(out_motion, regress_data[motion_columns].fillna(0.0).values, '%g')
     
     if regressors_names is None:
@@ -93,7 +97,7 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
     for condition in runinfo.conditions:
         event = events[events.trial_type.str.match(condition)]
 
-        runinfo.onsets.append(np.round(event.onset.values, 3).tolist())
+        runinfo.onsets.append(np.round(event.onset.values - del_scan + 1, 3).tolist()) # take out the first several deleted scans
         runinfo.durations.append(np.round(event.duration.values, 3).tolist())
         if 'amplitudes' in events.columns:
             runinfo.amplitudes.append(np.round(event.amplitudes.values, 3).tolist())
@@ -102,7 +106,7 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
 
     if 'regressor_names' in bunch_fields:
         runinfo.regressor_names = regressors_names
-        runinfo.regressors = regress_data[regressors_names].fillna(0.0).values.T.tolist()
+        runinfo.regressors = regress_data[regressors_names].fillna(0.0).values[del_scan:,].T.tolist()
 
     return [runinfo], str(out_motion)
 
@@ -137,7 +141,14 @@ runinfo.inputs.motion_columns   = ['trans_x', 'trans_x_derivative1', 'trans_x_de
                                   ['rot_z', 'rot_z_derivative1', 'rot_z_derivative1_power2', 'rot_z_power2']
 
 #%%
-gunzip = MapNode(Gunzip(), name='gunzip', iterfield=['in_file'])
+# gunzip = MapNode(Gunzip(), name='gunzip', iterfield=['in_file'])
+
+
+# delete first several scans
+extract = Node(fsl.ExtractROI(), name="extract")
+extract.inputs.t_min = del_scan
+extract.inputs.t_size = -1
+extract.inputs.output_type='NIFTI'
 
 # smoothing
 smooth = Node(spm.Smooth(), name="smooth", fwhm = fwhm)
@@ -170,8 +181,8 @@ wfSPM = Workflow(name="l1spm", base_dir=work_dir)
 wfSPM.connect([
         (infosource, selectfiles, [('subject_id', 'subject_id'), ('task_id', 'task_id')]),
         (selectfiles, runinfo, [('events','events_file'),('regressors','regressors_file')]),
-        (selectfiles, gunzip, [('func','in_file')]),
-        (gunzip, smooth, [('out_file','in_files')]),
+        (selectfiles, extract, [('func','in_file')]),
+        (extract, smooth, [('roi_file','in_files')]),
         (smooth, runinfo, [('smoothed_files','in_file')]),
         (smooth, modelspec, [('smoothed_files', 'functional_runs')]),   
         (runinfo, modelspec, [('info', 'subject_info'), ('realign_file', 'realignment_parameters')]),
@@ -201,7 +212,7 @@ wfSPM.connect([
 #%% Adding data sink
 ########################################################################
 # Datasink
-datasink = Node(nio.DataSink(base_directory=os.path.join(output_root, 'Sink')),
+datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink')),
                                          name="datasink")
                        
 
@@ -216,14 +227,15 @@ wfSPM.connect([
         ])
 
 #%%
+wfSPM.write_graph(graph2use = 'flat')
+
 wfSPM.write_graph("workflow_graph.dot", graph2use='colored', format='png', simple_form=True)
 wfSPM.write_graph(graph2use='orig', dotfilename='./graph_orig.dot')
 %matplotlib inline
 from IPython.display import Image
 Image(filename="/workflow_graph.png")
 %matplotlib qt
-Image(filename = '/media/Data/work/KPE_SPM/l1spm/graph_detailed.png')
-wfSPM.write_graph(graph2use='flat')
+Image(filename = '/home/rj299/project/mdm_analysis/work/l1spm/graph.png')
 
 #%%
 wfSPM.run('MultiProc', plugin_args={'n_procs': 3})
