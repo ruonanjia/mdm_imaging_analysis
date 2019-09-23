@@ -5,8 +5,8 @@ Spyder Editor
 This is a temporary script file.
 """
 import os
-import pandas as pd
-import numpy as np
+# import pandas as pd
+# import numpy as np
 #%%
 base_root = '/home/rj299/project/mdm_analysis/'
 data_root = '/home/rj299/project/mdm_analysis/data_rename'
@@ -42,8 +42,8 @@ work_dir = os.path.join(base_root, 'work') # intermediate products
 # subject_list = [2583, 2588]
 # task_list = [1,2,3,4,5,6,7,8]
 
-subject_list = [2588]
-task_list = [2]
+subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
+# task_id = [1,2]
 
 fwhm = 6
 tr = 1
@@ -51,11 +51,17 @@ tr = 1
 del_scan = 10
 
 # Map field names to individual subject runs.
-infosource = pe.Node(util.IdentityInterface(fields=['subject_id', 'task_id'],),
+# infosource = pe.Node(util.IdentityInterface(fields=['subject_id', 'task_id'],),
+#                   name="infosource")
+
+# infosource.iterables = [('subject_id', subject_list), 
+#                         ('task_id', task_list)]
+
+infosource = pe.Node(util.IdentityInterface(fields=['subject_id'],),
                   name="infosource")
 
-infosource.iterables = [('subject_id', subject_list), 
-                        ('task_id', task_list)]
+infosource.iterables = [('subject_id', subject_list)]
+
 
 #%%
 def _bids2nipypeinfo(in_file, events_file, regressors_file,
@@ -89,26 +95,45 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
         bunch_fields += ['regressor_names']
         bunch_fields += ['regressors']
 
+    domain = list(set(events.condition.values))[0] # domain of this task run, should be only one, 'Mon' or 'Med'
+    trial_types = list(set(events.trial_type.values))
+ 
     runinfo = Bunch(
         scans=in_file,
-        conditions=list(set(events.trial_type.values)),
+        conditions=[domain + '_' + trial_type for trial_type in trial_types],
+        # conditions = ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'],
         **{k: [] for k in bunch_fields})
 
-    for condition in runinfo.conditions:
-        event = events[events.trial_type.str.match(condition)]
-
+    for condition in runinfo.conditions:        
+        
+        event = events[events.trial_type.str.match(condition[4:])]
         runinfo.onsets.append(np.round(event.onset.values - del_scan + 1, 3).tolist()) # take out the first several deleted scans
         runinfo.durations.append(np.round(event.duration.values, 3).tolist())
         if 'amplitudes' in events.columns:
             runinfo.amplitudes.append(np.round(event.amplitudes.values, 3).tolist())
         else:
             runinfo.amplitudes.append([amplitude] * len(event))
-
+            
+        # if domain == condition[:3]:
+        #     event = events[events.trial_type.str.match(condition[4:])]
+        #     runinfo.onsets.append(np.round(event.onset.values - del_scan + 1, 3).tolist()) # take out the first several deleted scans
+        #     runinfo.durations.append(np.round(event.duration.values, 3).tolist())
+        #     if 'amplitudes' in events.columns:
+        #         runinfo.amplitudes.append(np.round(event.amplitudes.values, 3).tolist())
+        #     else:
+        #         runinfo.amplitudes.append([amplitude] * len(event))
+                
+        # else: # empty conditions
+        #     runinfo.onsets.append([])
+        #     runinfo.durations.append([])
+        #     runinfo.amplitudes.append([])
+            
+            
     if 'regressor_names' in bunch_fields:
         runinfo.regressor_names = regressors_names
         runinfo.regressors = regress_data[regressors_names].fillna(0.0).values[del_scan:,].T.tolist()
 
-    return [runinfo], str(out_motion)
+    return runinfo, str(out_motion)
 
 #%%
 templates = {'func': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz'),
@@ -121,11 +146,14 @@ selectfiles = pe.Node(nio.SelectFiles(templates,
                       base_directory=data_root),
                       name="selectfiles")
         
+selectfiles.inputs.task_id = [1,2,3,4,5,6,7,8]        
+        
 # Extract motion parameters from regressors file
-runinfo = pe.Node(util.Function(
+runinfo = MapNode(util.Function(
     input_names=['in_file', 'events_file', 'regressors_file', 'regressors_names', 'motion_columns'],
     function=_bids2nipypeinfo, output_names=['info', 'realign_file']),
-    name='runinfo')
+    name='runinfo',
+    iterfield = ['in_file', 'events_file', 'regressors_file'])
 
 # Set the column names to be used from the confounds file
 # reference a paper from podlrack lab
@@ -140,12 +168,27 @@ runinfo.inputs.motion_columns   = ['trans_x', 'trans_x_derivative1', 'trans_x_de
                                   ['rot_y', 'rot_y_derivative1', 'rot_y_derivative1_power2', 'rot_y_power2'] + \
                                   ['rot_z', 'rot_z_derivative1', 'rot_z_derivative1_power2', 'rot_z_power2']
 
+
 #%%
 # gunzip = MapNode(Gunzip(), name='gunzip', iterfield=['in_file'])
 
 
 # delete first several scans
-extract = Node(fsl.ExtractROI(), name="extract")
+# def extract_all(in_files):
+#     from nipype.interfaces import fsl
+#     roi_files = []
+#     for in_file in in_files:
+#         roi_file = fsl.ExtractROI(in_file = in_file, t_min = 10, t_size = -1, output_type = 'NIFTI')
+#         roi_files.append(roi_file)  
+#     return roi_files
+
+        
+# extract = pe.Node(util.Function(
+#         input_names = ['in_files'],
+#         function = extract_all, output_names = ['roi_files']),
+#         name = 'extract')
+        
+extract = pe.MapNode(fsl.ExtractROI(), name="extract", iterfield = ['in_file'])
 extract.inputs.t_min = del_scan
 extract.inputs.t_size = -1
 extract.inputs.output_type='NIFTI'
@@ -153,12 +196,20 @@ extract.inputs.output_type='NIFTI'
 # smoothing
 smooth = Node(spm.Smooth(), name="smooth", fwhm = fwhm)
 
-# set contrasts
-cont1 = ['Ambiguity', 'T', ['amb', 'risk'], [1, 0]]
-cont2 = ['Risk', 'T', ['amb', 'risk'], [0, 1]]
-# need to add if logic for mon and med condition
-contrasts = [cont1, cont2]
+# set contrasts, depend on the condition
+cont1 = ['Med_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 0, 0, 0]]
+cont2 = ['Med_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 1, 0, 0]]
+cont3 = ['Mon_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 1, 0]]
+cont4 = ['Mon_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 0, 1]]
+cont5 = ['Med>Mon_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 0, -1, 0]]
+cont6 = ['Med>Mon_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 1, 0, -1]]
+cont7 = ['Med>Mon', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 1, -1, -1]]
 
+contrasts = [cont1, cont2, cont3, cont4, cont5, cont6, cont7]
+
+# cont1 = ['Med_Amb', 'T', ['Med_amb', 'Med_risk'], [1, 0]]
+# cont2 = ['Med_Risk', 'T', ['Med_amb', 'Med_risk'], [0, 1]]
+# contrasts = [cont1, cont2]
 
 #%%
 
@@ -179,7 +230,7 @@ level1design.inputs.model_serial_correlations = 'AR(1)'
 # create workflow
 wfSPM = Workflow(name="l1spm", base_dir=work_dir)
 wfSPM.connect([
-        (infosource, selectfiles, [('subject_id', 'subject_id'), ('task_id', 'task_id')]),
+        (infosource, selectfiles, [('subject_id', 'subject_id')]),
         (selectfiles, runinfo, [('events','events_file'),('regressors','regressors_file')]),
         (selectfiles, extract, [('func','in_file')]),
         (extract, smooth, [('roi_file','in_files')]),
@@ -226,21 +277,19 @@ wfSPM.connect([
                                               ])
         ])
 
-#%%
-wfSPM.write_graph(graph2use = 'flat')
-
-wfSPM.write_graph("workflow_graph.dot", graph2use='colored', format='png', simple_form=True)
-wfSPM.write_graph(graph2use='orig', dotfilename='./graph_orig.dot')
-%matplotlib inline
-from IPython.display import Image
-Image(filename="/workflow_graph.png")
-%matplotlib qt
-Image(filename = '/home/rj299/project/mdm_analysis/work/l1spm/graph.png')
-
-#%%
-wfSPM.run('MultiProc', plugin_args={'n_procs': 3})
+#%% run
+wfSPM.run('MultiProc', plugin_args={'n_procs': 4})
     
-#%% FSL    
+#%%
+# wfSPM.write_graph(graph2use = 'flat')
+
+# # wfSPM.write_graph("workflow_graph.dot", graph2use='colored', format='png', simple_form=True)
+# # wfSPM.write_graph(graph2use='orig', dotfilename='./graph_orig.dot')
+# %matplotlib inline
+# from IPython.display import Image
+# %matplotlib qt
+# Image(filename = '/home/rj299/project/mdm_analysis/work/l1spm/graph.png')
+# #%% FSL    
                                                    
 ## 
 #l1_spec = pe.Node(SpecifyModel(
