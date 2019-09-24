@@ -42,7 +42,8 @@ work_dir = os.path.join(base_root, 'work') # intermediate products
 # subject_list = [2583, 2588]
 # task_list = [1,2,3,4,5,6,7,8]
 
-subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
+subject_list = [2588]
+# subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
 # task_id = [1,2]
 
 fwhm = 6
@@ -199,13 +200,18 @@ smooth = Node(spm.Smooth(), name="smooth", fwhm = fwhm)
 # set contrasts, depend on the condition
 cont1 = ['Med_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 0, 0, 0]]
 cont2 = ['Med_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 1, 0, 0]]
-cont3 = ['Mon_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 1, 0]]
-cont4 = ['Mon_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 0, 1]]
-cont5 = ['Med>Mon_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 0, -1, 0]]
-cont6 = ['Med>Mon_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 1, 0, -1]]
-cont7 = ['Med>Mon', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 1, -1, -1]]
+cont3 = ['Med_Amb>Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, -1, 0, 0]]
 
-contrasts = [cont1, cont2, cont3, cont4, cont5, cont6, cont7]
+cont4 = ['Mon_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 1, 0]]
+cont5 = ['Mon_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 0, 1]]
+cont6 = ['Mon_Amb>Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 1, -1]]
+
+cont7 = ['Med>Mon_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 0, -1, 0]]
+cont8 = ['Med>Mon_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 1, 0, -1]]
+
+cont9 = ['Med>Mon', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 1, -1, -1]]
+
+contrasts = [cont1, cont2, cont3, cont4, cont5, cont6, cont7, cont8, cont9]
 
 # cont1 = ['Med_Amb', 'T', ['Med_amb', 'Med_risk'], [1, 0]]
 # cont2 = ['Med_Risk', 'T', ['Med_amb', 'Med_risk'], [0, 1]]
