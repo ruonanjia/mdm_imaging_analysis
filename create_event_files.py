@@ -97,7 +97,7 @@ def readConditions(matFile, x): # takes name of file and when to begin (i.e. fir
     # calculate response from choice and refside
     resp = np.ones(choice.shape) # 1-choose lottery
     resp[choice == refside] = 0 # 0-choose reference
-    resp[choice == 0] = np.nan # nan-no respone
+    resp[choice == 0] = 2 # 2-no respone
     
     # x= 0 # where to start
     for i in range(x, x+trial_num):
