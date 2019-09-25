@@ -5,8 +5,8 @@ Spyder Editor
 This is a temporary script file.
 """
 import os
-# import pandas as pd
-# import numpy as np
+import pandas as pd
+import numpy as np
 #%%
 base_root = '/home/rj299/project/mdm_analysis/'
 data_root = '/home/rj299/project/mdm_analysis/data_rename'
@@ -42,8 +42,9 @@ work_dir = os.path.join(base_root, 'work') # intermediate products
 # subject_list = [2583, 2588]
 # task_list = [1,2,3,4,5,6,7,8]
 
-subject_list = [2588]
-# subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
+#subject_list = [2588]
+#subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
+subject_list = [2582, 2583, 2584]
 # task_id = [1,2]
 
 fwhm = 6
