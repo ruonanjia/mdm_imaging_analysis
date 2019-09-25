@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --partition general
 #SBATCH --nodes 1
-#SBATCH --time 10:00:00
+#SBATCH --time 16:00:00
 #SBATCH --ntasks-per-node 1
 #SBATCH --mem-per-cpu 8G
 #SBATCH --jupyter-notebook
-#SBATCH --output jupyter-log-%J.log
+#SBATCH --output jupyter-log-%J.txt
 
 ## get tunneling info
 XDG_RUNTIME_DIR=""
@@ -14,7 +14,7 @@ node=$(hostname -s)
 user=$(whoami)
 cluster=$(hostname -f | awk -F"." '{print $2}')
 
-## print tunneling instructions to jupyter-log-{jobid}.log
+## print tunneling instructions to jupyter-log-{jobid}.txt
 echo -e "
     MacOS or linus terminal command to create your ssh tunnel:
     Copy/Paste this in your local terminal to ssh tunnel with remote
