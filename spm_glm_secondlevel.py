@@ -94,4 +94,4 @@ l2analysis.connect([(infosource, selectfiles, [('contrast_id', 'contrast_id'),
                                                '2ndLevel.@threshold')]),
                                                         ])
 #%%                                                     
-l2analysis.run('MultiProc', plugin_args={'n_procs': 4})
+l2analysis.run('MultiProc', plugin_args={'n_procs': 3})

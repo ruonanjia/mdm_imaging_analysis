@@ -44,7 +44,7 @@ work_dir = os.path.join(base_root, 'work') # intermediate products
 
 #subject_list = [2588]
 #subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
-subject_list = [2582, 2583, 2584]
+subject_list = [2582, 2588]
 # task_id = [1,2]
 
 fwhm = 6
@@ -285,7 +285,7 @@ wfSPM.connect([
         ])
 
 #%% run
-wfSPM.run('MultiProc', plugin_args={'n_procs': 4})
+wfSPM.run('MultiProc', plugin_args={'n_procs': 3})
     
 #%%
 # wfSPM.write_graph(graph2use = 'flat')
@@ -296,95 +296,3 @@ wfSPM.run('MultiProc', plugin_args={'n_procs': 4})
 # from IPython.display import Image
 # %matplotlib qt
 # Image(filename = '/home/rj299/project/mdm_analysis/work/l1spm/graph.png')
-# #%% FSL    
-                                                   
-## 
-#l1_spec = pe.Node(SpecifyModel(
-#    parameter_source='FSL',
-#    input_units='secs',
-#    high_pass_filter_cutoff=120,
-#    time_repetition = tr,
-#), name='l1_spec')
-#
-## l1_model creates a first-level model design
-#l1_model = pe.Node(fsl.Level1Design(
-#    bases={'dgamma': {'derivs': True}}, # adding temporal derivative of double gamma
-#    model_serial_correlations=True,
-#    interscan_interval = tr,
-#    contrasts=contrasts
-#    # orthogonalization=orthogonality,
-#), name='l1_model')
-#
-## feat_spec generates an fsf model specification file
-#feat_spec = pe.Node(fsl.FEATModel(), name='feat_spec')
-#
-## feat_fit actually runs FEAT
-#feat_fit = pe.Node(fsl.FEAT(), name='feat_fit', mem_gb=5)
-#
-### instead of FEAT
-##modelestimate = pe.MapNode(interface=fsl.FILMGLS(smooth_autocorr=True,
-##                                                 mask_size=5,
-##                                                 threshold=1000),
-##                                                 name='modelestimate',
-##                                                 iterfield = ['design_file',
-##                                                              'in_file',
-##                                                              'tcon_file'])
-#
-#feat_select = pe.Node(nio.SelectFiles({
-#    'cope': 'stats/cope*.nii.gz',
-#    'pe': 'stats/pe[0-9][0-9].nii.gz',
-#    'tstat': 'stats/tstat*.nii.gz',
-#    'varcope': 'stats/varcope*.nii.gz',
-#    'zstat': 'stats/zstat*.nii.gz',
-#}), name='feat_select')
-#
-#ds_cope = pe.Node(DerivativesDataSink(
-#    base_directory=str(output_dir), keep_dtype=False, suffix='cope',
-#    desc='intask'), name='ds_cope', run_without_submitting=True)
-#
-#ds_varcope = pe.Node(DerivativesDataSink(
-#    base_directory=str(output_dir), keep_dtype=False, suffix='varcope',
-#    desc='intask'), name='ds_varcope', run_without_submitting=True)
-#
-#ds_zstat = pe.Node(DerivativesDataSink(
-#    base_directory=str(output_dir), keep_dtype=False, suffix='zstat',
-#    desc='intask'), name='ds_zstat', run_without_submitting=True)
-#
-#ds_tstat = pe.Node(DerivativesDataSink(
-#    base_directory=str(output_dir), keep_dtype=False, suffix='tstat',
-#    desc='intask'), name='ds_tstat', run_without_submitting=True)
-
-#%% connect workflow, FSL
-#workflow.connect([
-#    (infosource, selectfiles, [('subject_id', 'subject_id'), ('task_id', 'task_id')]),
-#    (selectfiles, runinfo, [('events','events_file'),('regressors','regressors_file')]),
-#    (selectfiles, susan, [('func', 'inputnode.in_files'), ('mask','inputnode.mask_file')]),
-#    (susan, runinfo, [('outputnode.smoothed_files', 'in_file')]),
-#    (susan, l1_spec, [('outputnode.smoothed_files', 'functional_runs')]),
-#  #  (susan,modelestimate, [('outputnode.smoothed_files','in_file')]), # try to run FILMGLS
-#    (selectfiles, ds_cope, [('func', 'source_file')]),
-#    (selectfiles, ds_varcope, [('func', 'source_file')]),
-#    (selectfiles, ds_zstat, [('func', 'source_file')]),
-#    (selectfiles, ds_tstat, [('func', 'source_file')]),
-#   
-#    (runinfo, l1_spec, [
-#        ('info', 'subject_info'),
-#        ('realign_file', 'realignment_parameters')]),
-#    (l1_spec, l1_model, [('session_info', 'session_info')]),
-#    (l1_model, feat_spec, [
-#        ('fsf_files', 'fsf_file'),
-#        ('ev_files', 'ev_files')]),
-#    (l1_model, feat_fit, [('fsf_files', 'fsf_file')]),
-##    (feat_spec,modelestimate,[('design_file','design_file'),
-##                            ('con_file','tcon_file')]),
-#   
-#    (feat_fit, feat_select, [('feat_dir', 'base_directory')]),
-#    (feat_select, ds_cope, [('cope', 'in_file')]),
-#    (feat_select, ds_varcope, [('varcope', 'in_file')]),
-#    (feat_select, ds_zstat, [('zstat', 'in_file')]),
-#    (feat_select, ds_tstat, [('tstat', 'in_file')]),
-#])
-#    
-#%% run workflow, FSL    
-#workflow.run(plugin='Linear', plugin_args={'n_procs': 1}) # try that in case fsl will run faster with it.
-# workflow.run('MultiProc', plugin_args={'n_procs': 4,'memory_gb':40})
