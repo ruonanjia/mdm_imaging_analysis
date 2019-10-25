@@ -31,6 +31,9 @@ from nipype.interfaces import fsl
 
 from nipype.interfaces.matlab import MatlabCommand
 
+import nibabel as nib
+from nilearn.input_data import NiftiMasker
+
 #%%
 MatlabCommand.set_default_paths('/home/rj299/project/MATLAB/toolbox/spm12/') # set default SPM12 path in my computer. 
 fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
@@ -39,12 +42,10 @@ data_dir = data_root
 output_dir = os.path.join(out_root, 'imaging')
 work_dir = os.path.join(base_root, 'work') # intermediate products
 
-# subject_list = [2583, 2588]
-# task_list = [1,2,3,4,5,6,7,8]
 
-#subject_list = [2588]
-#subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
-subject_list = [2588]
+subject_list = [2073, 2550, 2583, 2584, 2585, 2592, 2593, 2594, 2596, 2597, 2598, 2624, 2650, 2651, 
+                2652, 2653, 2654, 2655, 2656, 2657, 2658, 2659, 2660, 2662, 2663, 2664, 2665, 2666]
+#subject_list = [2588, 2582, 2600]
 # 2582
 # task_id = [1,2]
 
@@ -306,7 +307,7 @@ wfSPM_rsa.connect([
 #%% Adding data sink
 ########################################################################
 # Datasink
-datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink')),
+datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_rsa')),
                                          name="datasink")
                        
 
@@ -320,9 +321,89 @@ wfSPM_rsa.connect([
                                               ])
         ])
 
-#%% run
-wfSPM_rsa.run('MultiProc', plugin_args={'n_procs': 2})
+#%% Compute ROI RDM
     
+def compute_roi_rdm(in_file,
+                    stims,
+                    mask_vmpfc,
+                    mask_vstr):
+    
+    from pathlib import Path
+    from nilearn.input_data import NiftiMasker
+    import numpy as np
+    import nibabel as nib
+    
+    rdm_out = Path('roi_rdm.npy').resolve()
+    stim_num = len(stims)
+    
+    masker_vstr = NiftiMasker(mask_img=mask_vstr)
+    masker_vmpfc = NiftiMasker(mask_img=mask_vmpfc)
+
+    spmt_allstims_vmpfc= np.zeros((stim_num, 449))
+    spmt_allstims_vstr= np.zeros((stim_num, 500))
+
+    for (stim_idx, spmt_file) in enumerate(in_file):
+        spmt = nib.load(spmt_file)
+        spmt_vmpfc = masker_vmpfc.fit_transform(spmt)
+        spmt_vstr = masker_vstr.fit_transform(spmt)
+        
+        spmt_allstims_vmpfc[stim_idx, :] = spmt_vmpfc
+        spmt_allstims_vstr[stim_idx, :] = spmt_vstr
+
+# Loop based on subject and stimulus id
+#    for (stim_idx, stim) in enumerate(list(stims.keys())):
+#        spmt = nib.load(os.path.join(output_dir, 'Sink_rsa', '1stLevel', '_subject_id_%s', 'spmT_00%s.nii' %(sub_id, stim)))
+#        spmt_vmpfc = masker_vmpfc.fit_transform(spmt)
+#        spmt_vstr = masker_vstr.fit_transform(spmt)
+#        
+#        spmt_allstims_vmpfc[stim_idx, :] = spmt_vmpfc
+#        spmt_allstims_vstr[stim_idx, :] = spmt_vstr
+        
+    # create rdm
+    rdm_vmpfc = 1 - np.corrcoef(spmt_allstims_vmpfc)
+    rdm_vstr = 1 - np.corrcoef(spmt_allstims_vstr)
+    
+    np.save(rdm_out, {'vmpfc': rdm_vmpfc, 'vstr': rdm_vstr})
+#    np.save(rdm_out, rdm_vmpfc)
+    
+    return str(rdm_out)
+
+
+
+get_roi_rdm = Node(util.Function(
+    input_names=['in_file', 'stims', 'mask_vmpfc', 'mask_vstr'],
+    function=compute_roi_rdm, 
+    output_names=['rdm_out']),
+    name='get_roi_rdm',
+    )    
+    
+get_roi_rdm.inputs.stims = {'01': 'Med_amb_0', '02': 'Med_amb_1', '03': 'Med_amb_2', '04': 'Med_amb_3',
+                            '05': 'Med_risk_0', '06': 'Med_risk_1', '07': 'Med_risk_2', '08': 'Med_risk_3', 
+                            '09': 'Mon_amb_0', '10': 'Mon_amb_1', '11': 'Mon_amb_2', '12': 'Mon_amb_3',
+                            '13': 'Mon_risk_0', '14': 'Mon_risk_1', '15': 'Mon_risk_2', '16': 'Mon_risk_3'}
+
+# Masker
+maskfile_vmpfc = os.path.join(output_dir, 'binConjunc_PvNxDECxRECxMONxPRI_vmpfc.nii.gz')
+maskfile_vstr = os.path.join(output_dir, 'binConjunc_PvNxDECxRECxMONxPRI_striatum.nii.gz')
+get_roi_rdm.inputs.mask_vmpfc = nib.load(maskfile_vmpfc)
+get_roi_rdm.inputs.mask_vstr = nib.load(maskfile_vstr)
+
+wfSPM_rsa.connect([
+        (contrastestimate, get_roi_rdm, [('spmT_images', 'in_file')]),
+        ])
+
+#%% data sink rdm
+# Datasink
+datasink_rdm = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_rsa')),
+                                         name="datasink_rdm")
+                       
+
+wfSPM_rsa.connect([
+        (get_roi_rdm, datasink_rdm, [('rdm_out', 'rdm.@rdm')]),
+        ])
+#%% run
+wfSPM_rsa.run('MultiProc', plugin_args={'n_procs': 8})
+#wfSPM_rsa.run(plugin='Linear', plugin_args={'n_procs': 1})    
 #%%
 # wfSPM.write_graph(graph2use = 'flat')
 
