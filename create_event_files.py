@@ -11,14 +11,14 @@ import os
 import scipy.io as spio
 import pandas as pd
 
-
 #%%
 data_behav_root = '/home/rj299/scratch60/mdm_analysis/data_behav'
 out_root = '/home/rj299/scratch60/mdm_analysis/output'
 # data_behav_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Behavioral Analysis\PTB Behavior Log'
 
 # subjects for imaging analysis
-sub_num = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 2664, 2665, 2666]
+sub_num = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 2596, 2597, 2598, 2599, 2600, 2624, 
+           2650, 2651, 2652, 2653, 2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 2664, 2665, 2666]
 #sub_nums = [2599, 2661]
     
 #%% read parameters to calculate SV
@@ -140,6 +140,8 @@ def readConditions(subNum, domain, matFile, x): # takes name of file and when to
     events = []
     resultsArray = []
     duration = []
+    resp_array =[]
+    resp_onset = []
    
     ambigs = metaData[data_keyname]['ambigs']
     probs = metaData[data_keyname]['probs']
@@ -157,9 +159,15 @@ def readConditions(subNum, domain, matFile, x): # takes name of file and when to
     for i in range(x, x+trial_num):
         #a= metaData['Data']['trialTime'][i]
         #b = vars(a)
-      
+        
+        # trial onset 
         resultsArray = vars(metaData[data_keyname]['trialTime'][i])['trialStartTime'] - vars(metaData[data_keyname]['trialTime'][x])['trialStartTime']
         timeStamp.append(int(round((3600*resultsArray[3] + 60*resultsArray[4] + resultsArray[5])))) # using int and round to round to the close integer. 
+        
+        # response onset
+        resp_array = vars(metaData[data_keyname]['trialTime'][i])['feedbackStartTime'] - vars(metaData[data_keyname]['trialTime'][x])['trialStartTime']
+        resp_onset.append(int(round((3600*resp_array[3] + 60*resp_array[4] + resp_array[5])))) # using int and round to round to the close integer.
+        
         duration.append(6)
        
         if ambigs[i] == 0:
@@ -167,7 +175,11 @@ def readConditions(subNum, domain, matFile, x): # takes name of file and when to
         else:
             condition.append('amb')
     
-    events= pd.DataFrame({'trial_type':condition, 'onset':timeStamp, 'duration':duration, 'probs': probs[range(x, x+trial_num)], 'ambigs': ambigs[range(x, x+trial_num)], 'vals': vals[range(x, x+trial_num)], 'svs': np.round(svs[range(x, x+trial_num)], 2), 'ref_svs': np.round(ref_svs[range(x, x+trial_num)], 2), 'resp': resp[range(x, x+trial_num)]})[1:] # building data frame from what we took. Removing first row because its not used. 
+    events= pd.DataFrame({'trial_type':condition, 'onset':timeStamp, 'duration':duration, 
+                          'probs': probs[range(x, x+trial_num)], 'ambigs': ambigs[range(x, x+trial_num)], 'vals': vals[range(x, x+trial_num)], 
+                          'svs': np.round(svs[range(x, x+trial_num)], 3), 'ref_svs': np.round(ref_svs[range(x, x+trial_num)], 3), 
+                          'resp': resp[range(x, x+trial_num)],
+                          'resp_onset': resp_onset})[1:] # building data frame from what we took. Removing first row because its not used. 
     return events
 
 
@@ -248,6 +260,7 @@ sub_id = behav_med['Datamed']['observer']
 probs = behav_med['Datamed']['probs']
 ambigs = behav_med['Datamed']['ambigs']
 vals = behav_med['Datamed']['vals']
+trialTime = behav_med['Datamed']['trialTime']
 
 choice = behav_med['Datamed']['choice']
 print(choice)
@@ -271,5 +284,5 @@ for sub_id in sub_num:
     # write into csv
     
     for task_id in range(8):
-        pd.DataFrame(totalEvent_sub[task_id]).to_csv(os.path.join(out_root, 'event_files', 'sub-' + str(sub_id)+ '_task-' +str(task_id+1) + '_cond_v2.csv'), 
+        pd.DataFrame(totalEvent_sub[task_id]).to_csv(os.path.join(out_root, 'event_files', 'sub-' + str(sub_id)+ '_task-' +str(task_id+1) + '_cond_v3.csv'), 
                           index = False, sep = '\t')    
