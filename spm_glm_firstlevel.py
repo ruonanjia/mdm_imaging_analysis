@@ -8,9 +8,9 @@ import os
 import pandas as pd
 import numpy as np
 #%%
-base_root = '/home/rj299/project/mdm_analysis/'
-data_root = '/home/rj299/project/mdm_analysis/data_rename'
-out_root = '/home/rj299/project/mdm_analysis/output'
+base_root = '/home/rj299/scratch60/mdm_analysis/'
+data_root = '/home/rj299/scratch60/mdm_analysis/data_rename'
+out_root = '/home/rj299/scratch60/mdm_analysis/output'
 
 # base_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\RA_PTSD_SPM'
 # data_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\data_rename'
@@ -39,12 +39,19 @@ data_dir = data_root
 output_dir = os.path.join(out_root, 'imaging')
 work_dir = os.path.join(base_root, 'work') # intermediate products
 
-# subject_list = [2583, 2588]
 # task_list = [1,2,3,4,5,6,7,8]
 
-#subject_list = [2588]
-#subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
-subject_list = [2582, 2588]
+#subject_list = [2597, 2658, 2665]
+# 2597
+#subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 2596]
+#subject_list = [2655, 2658, 2665]
+#subject_list = [2597, 2599, 2656, 2657, 2659, 2660, 2661, 2662, 2663, 2664, 2666]
+
+subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 
+           2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 
+           2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
+           2664, 2665, 2666]
+
 # task_id = [1,2]
 
 fwhm = 6
@@ -105,16 +112,31 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
         conditions=[domain + '_' + trial_type for trial_type in trial_types],
         # conditions = ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'],
         **{k: [] for k in bunch_fields})
+    
 
+    
     for condition in runinfo.conditions:        
         
         event = events[events.trial_type.str.match(condition[4:])]
         runinfo.onsets.append(np.round(event.onset.values - del_scan + 1, 3).tolist()) # take out the first several deleted scans
         runinfo.durations.append(np.round(event.duration.values, 3).tolist())
+        
         if 'amplitudes' in events.columns:
             runinfo.amplitudes.append(np.round(event.amplitudes.values, 3).tolist())
         else:
             runinfo.amplitudes.append([amplitude] * len(event))
+            
+            
+    # response predictor regardless of condition
+    runinfo.conditions.append('Resp')
+    
+#     response predictor when there is a button press
+    resp_mask = events.resp != 2    
+    resp_onset= np.round(events.resp_onset.values[resp_mask] - del_scan + 1, 3).tolist()
+    runinfo.onsets.append(resp_onset)
+    runinfo.durations.append([0] * len(resp_onset))
+    runinfo.amplitudes.append([amplitude] * len(resp_onset))
+        
             
         # if domain == condition[:3]:
         #     event = events[events.trial_type.str.match(condition[4:])]
@@ -129,8 +151,9 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
         #     runinfo.onsets.append([])
         #     runinfo.durations.append([])
         #     runinfo.amplitudes.append([])
-            
-            
+    
+    
+        
     if 'regressor_names' in bunch_fields:
         runinfo.regressor_names = regressors_names
         runinfo.regressors = regress_data[regressors_names].fillna(0.0).values[del_scan:,].T.tolist()
@@ -141,9 +164,9 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
 templates = {'func': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz'),
              'mask': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz'),
              'regressors': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_desc-confounds_regressors.tsv'),
-             'events': os.path.join(out_root, 'event_files', 'sub-{subject_id}_task-{task_id}_cond.csv')}
+             'events': os.path.join(out_root, 'event_files', 'sub-{subject_id}_task-{task_id}_cond_v3.csv')}
 
-# Flexibly collect data from disk to feed into workflows.
+# Flexibly collect data from disk to feed into flows.
 selectfiles = pe.Node(nio.SelectFiles(templates,
                       base_directory=data_root),
                       name="selectfiles")
@@ -159,9 +182,11 @@ runinfo = MapNode(util.Function(
 
 # Set the column names to be used from the confounds file
 # reference a paper from podlrack lab
+        
 runinfo.inputs.regressors_names = ['std_dvars', 'framewise_displacement'] + \
                                   ['a_comp_cor_%02d' % i for i in range(6)]
-                                  
+
+#runinfo.inputs.regressors_names = ['a_comp_cor_%02d' % i for i in range(6)]                                  
 
 runinfo.inputs.motion_columns   = ['trans_x', 'trans_x_derivative1', 'trans_x_derivative1_power2', 'trans_x_power2'] + \
                                   ['trans_y', 'trans_y_derivative1', 'trans_y_derivative1_power2', 'trans_y_power2'] + \
@@ -170,7 +195,7 @@ runinfo.inputs.motion_columns   = ['trans_x', 'trans_x_derivative1', 'trans_x_de
                                   ['rot_y', 'rot_y_derivative1', 'rot_y_derivative1_power2', 'rot_y_power2'] + \
                                   ['rot_z', 'rot_z_derivative1', 'rot_z_derivative1_power2', 'rot_z_power2']
 
-
+#runinfo.inputs.motion_columns = None
 #%%
 # gunzip = MapNode(Gunzip(), name='gunzip', iterfield=['in_file'])
 
@@ -199,24 +224,25 @@ extract.inputs.output_type='NIFTI'
 smooth = Node(spm.Smooth(), name="smooth", fwhm = fwhm)
 
 # set contrasts, depend on the condition
-cont1 = ['Med_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 0, 0, 0]]
-cont2 = ['Med_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 1, 0, 0]]
-cont3 = ['Med_Amb>Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, -1, 0, 0]]
+cond_names = ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk', 'Resp']
 
-cont4 = ['Mon_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 1, 0]]
-cont5 = ['Mon_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 0, 1]]
-cont6 = ['Mon_Amb>Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 0, 1, -1]]
+cont1 = ('Med_Amb', 'T', cond_names, [1, 0, 0, 0, 0])
+cont2 = ('Med_Risk', 'T', cond_names, [0, 1, 0, 0, 0])
+cont3 = ('Med_Amb>Risk', 'T', cond_names, [1, -1, 0, 0, 0])
+#
+cont4 = ('Mon_Amb', 'T', cond_names, [0, 0, 1, 0, 0])
+cont5 = ('Mon_Risk', 'T', cond_names, [0, 0, 0, 1, 0])
+cont6 = ('Mon_Amb>Risk', 'T', cond_names, [0, 0, 1, -1, 0])
 
-cont7 = ['Med>Mon_Amb', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 0, -1, 0]]
-cont8 = ['Med>Mon_Risk', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [0, 1, 0, -1]]
+cont7 = ('Med>Mon_Amb', 'T', cond_names, [1, 0, -1, 0, 0])
+cont8 = ('Med>Mon_Risk', 'T', cond_names, [0, 1, 0, -1, 0])
 
-cont9 = ['Med>Mon', 'T', ['Med_amb', 'Med_risk', 'Mon_amb', 'Mon_risk'], [1, 1, -1, -1]]
+cont9 = ('Med>Mon', 'T', cond_names, [1, 1, -1, -1, 0])
 
-contrasts = [cont1, cont2, cont3, cont4, cont5, cont6, cont7, cont8, cont9]
+cont10 = ('Response', 'T', cond_names, [0, 0, 0, 0, 1])
 
-# cont1 = ['Med_Amb', 'T', ['Med_amb', 'Med_risk'], [1, 0]]
-# cont2 = ['Med_Risk', 'T', ['Med_amb', 'Med_risk'], [0, 1]]
-# contrasts = [cont1, cont2]
+contrasts = [cont1, cont2, cont3, cont4, cont5, cont6, cont7, cont8, cont9, cont10]
+
 
 #%%
 
@@ -235,7 +261,7 @@ level1design.inputs.bases = {'hrf': {'derivs': [0, 0]}}
 level1design.inputs.model_serial_correlations = 'AR(1)'
 
 # create workflow
-wfSPM = Workflow(name="l1spm", base_dir=work_dir)
+wfSPM = Workflow(name="l1spm_resp", base_dir=work_dir)
 wfSPM.connect([
         (infosource, selectfiles, [('subject_id', 'subject_id')]),
         (selectfiles, runinfo, [('events','events_file'),('regressors','regressors_file')]),
@@ -254,7 +280,6 @@ level1estimate.inputs.estimation_method = {'Classical': 1}
 
 contrastestimate = pe.Node(
     interface=spm.EstimateContrast(), name="contrastestimate")
-#contrastestimate.inputs.contrasts = contrasts
 contrastestimate.overwrite = True
 contrastestimate.config = {'execution': {'remove_unnecessary_outputs': False}}
 contrastestimate.inputs.contrasts = contrasts                                                   
@@ -270,10 +295,20 @@ wfSPM.connect([
 #%% Adding data sink
 ########################################################################
 # Datasink
-datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink')),
+datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_resp')),
                                          name="datasink")
                        
 
+wfSPM.connect([
+        (level1estimate, datasink, [('beta_images',  '1stLevel.@betas.@beta_images'),
+                                    ('residual_image', '1stLevel.@betas.@residual_image'),
+                                    ('residual_images', '1stLevel.@betas.@residual_images'),
+                                    ('SDerror', '1stLevel.@betas.@SDerror'),
+                                    ('SDbetas', '1stLevel.@betas.@SDbetas'),
+                ])
+        ])
+    
+    
 wfSPM.connect([
        # here we take only the contrast ad spm.mat files of each subject and put it in different folder. It is more convenient like that. 
        (contrastestimate, datasink, [('spm_mat_file', '1stLevel.@spm_mat'),
@@ -285,7 +320,8 @@ wfSPM.connect([
         ])
 
 #%% run
-wfSPM.run('MultiProc', plugin_args={'n_procs': 3})
+wfSPM.run('MultiProc', plugin_args={'n_procs': 4})
+#wfSPM.run('Linear', plugin_args={'n_procs': 1})
     
 #%%
 # wfSPM.write_graph(graph2use = 'flat')

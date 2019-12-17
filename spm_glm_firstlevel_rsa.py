@@ -8,9 +8,9 @@ import os
 import pandas as pd
 import numpy as np
 #%%
-base_root = '/home/rj299/project/mdm_analysis/'
-data_root = '/home/rj299/project/mdm_analysis/data_rename'
-out_root = '/home/rj299/project/mdm_analysis/output'
+base_root = '/home/rj299/scratch60/mdm_analysis/'
+data_root = '/home/rj299/scratch60/mdm_analysis/data_rename'
+out_root = '/home/rj299/scratch60/mdm_analysis/output'
 
 # base_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\RA_PTSD_SPM'
 # data_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Imaging Analysis\data_rename'
@@ -42,14 +42,18 @@ data_dir = data_root
 output_dir = os.path.join(out_root, 'imaging')
 work_dir = os.path.join(base_root, 'work') # intermediate products
 
+subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 
+           2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 
+           2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
+           2664, 2665, 2666]
 
-subject_list = [2073, 2550, 2583, 2584, 2585, 2592, 2593, 2594, 2596, 2597, 2598, 2624, 2650, 2651, 
-                2652, 2653, 2654, 2655, 2656, 2657, 2658, 2659, 2660, 2662, 2663, 2664, 2665, 2666]
-#subject_list = [2588, 2582, 2600]
-# 2582
+#subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588]
+#subject_list = [2592, 2593, 2594, 2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 2654, 2655, 2656]
+#subject_list = [2657, 2658, 2659, 2660, 2661, 2662, 2663, 2664, 2665, 2666]
+
 # task_id = [1,2]
 
-fwhm = 6
+fwhm = 0
 tr = 1
 # first sevetal scans to delete
 del_scan = 10
@@ -155,7 +159,16 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
             runinfo.amplitudes.pop(cond_idx)
         else:
             cond_idx += 1
-             
+
+    # response predictor regardless of condition
+    runinfo.conditions.append('Resp')
+    
+    # response predictor when there is a button press
+    resp_mask = events.resp != 2    
+    resp_onset= np.round(events.resp_onset.values[resp_mask] - del_scan + 1, 3).tolist()
+    runinfo.onsets.append(resp_onset)
+    runinfo.durations.append([0] * len(resp_onset))
+    runinfo.amplitudes.append([amplitude] * len(resp_onset))             
             
     if 'regressor_names' in bunch_fields:
         runinfo.regressor_names = regressors_names
@@ -171,7 +184,7 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
 templates = {'func': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz'),
              'mask': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz'),
              'regressors': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_desc-confounds_regressors.tsv'),
-             'events': os.path.join(out_root, 'event_files', 'sub-{subject_id}_task-{task_id}_cond.csv')}
+             'events': os.path.join(out_root, 'event_files', 'sub-{subject_id}_task-{task_id}_cond_v3.csv')}
 
 # Flexibly collect data from disk to feed into workflows.
 selectfiles = pe.Node(nio.SelectFiles(templates,
@@ -243,6 +256,11 @@ for (cond_idx, single_condition) in enumerate(all_conditions):
                       all_conditions,
                       contrast_vector])
     
+# no need to include the response contrast because it is not interest of analysis
+# if included, the compute_roi_rdm needs to be adjusted, becasue it now takes all 
+# contrasts passed from contrast estimate and iterate through. Reponse contrast should bot be included
+#contrasts.append(['Response','T', ['Resp'], [1]])
+    
 # e.g. a single contrast should be:
 #cont1 = ['Med_amb_0', 'T', 
 #         ['Med_amb_0', 'Med_amb_1', 'Med_amb_2', 'Med_amb_3',
@@ -272,14 +290,16 @@ level1design.inputs.bases = {'hrf': {'derivs': [0, 0]}}
 level1design.inputs.model_serial_correlations = 'AR(1)'
 
 # create workflow
-wfSPM_rsa = Workflow(name="l1spm_rsa", base_dir=work_dir)
+wfSPM_rsa = Workflow(name="l1spm_resp_rsa_nosmooth", base_dir=work_dir)
 wfSPM_rsa.connect([
         (infosource, selectfiles, [('subject_id', 'subject_id')]),
         (selectfiles, runinfo, [('events','events_file'),('regressors','regressors_file')]),
         (selectfiles, extract, [('func','in_file')]),
-        (extract, smooth, [('roi_file','in_files')]),
-        (smooth, runinfo, [('smoothed_files','in_file')]),
-        (smooth, modelspec, [('smoothed_files', 'functional_runs')]),   
+#        (extract, smooth, [('roi_file','in_files')]),
+        (extract, runinfo, [('roi_file','in_file')]),
+#        (smooth, runinfo, [('smoothed_files','in_file')]),
+        (extract, modelspec, [('roi_file', 'functional_runs')]), 
+#        (smooth, modelspec, [('smoothed_files', 'functional_runs')]),   
         (runinfo, modelspec, [('info', 'subject_info'), ('realign_file', 'realignment_parameters')]),
         
         ])
@@ -307,10 +327,18 @@ wfSPM_rsa.connect([
 #%% Adding data sink
 ########################################################################
 # Datasink
-datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_rsa')),
+datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_resp_rsa_nosmooth')),
                                          name="datasink")
                        
-
+wfSPM_rsa.connect([
+        (level1estimate, datasink, [('beta_images',  '1stLevel.@betas.@beta_images'),
+                                    ('residual_image', '1stLevel.@betas.@residual_image'),
+                                    ('residual_images', '1stLevel.@betas.@residual_images'),
+                                    ('SDerror', '1stLevel.@betas.@SDerror'),
+                                    ('SDbetas', '1stLevel.@betas.@SDbetas'),
+                ])
+        ])
+    
 wfSPM_rsa.connect([
        # here we take only the contrast ad spm.mat files of each subject and put it in different folder. It is more convenient like that. 
        (contrastestimate, datasink, [('spm_mat_file', '1stLevel.@spm_mat'),
@@ -325,8 +353,7 @@ wfSPM_rsa.connect([
     
 def compute_roi_rdm(in_file,
                     stims,
-                    mask_vmpfc,
-                    mask_vstr):
+                    all_masks):
     
     from pathlib import Path
     from nilearn.input_data import NiftiMasker
@@ -336,42 +363,38 @@ def compute_roi_rdm(in_file,
     rdm_out = Path('roi_rdm.npy').resolve()
     stim_num = len(stims)
     
-    masker_vstr = NiftiMasker(mask_img=mask_vstr)
-    masker_vmpfc = NiftiMasker(mask_img=mask_vmpfc)
-
-    spmt_allstims_vmpfc= np.zeros((stim_num, 449))
-    spmt_allstims_vstr= np.zeros((stim_num, 500))
-
-    for (stim_idx, spmt_file) in enumerate(in_file):
-        spmt = nib.load(spmt_file)
-        spmt_vmpfc = masker_vmpfc.fit_transform(spmt)
-        spmt_vstr = masker_vstr.fit_transform(spmt)
-        
-        spmt_allstims_vmpfc[stim_idx, :] = spmt_vmpfc
-        spmt_allstims_vstr[stim_idx, :] = spmt_vstr
-
-# Loop based on subject and stimulus id
-#    for (stim_idx, stim) in enumerate(list(stims.keys())):
-#        spmt = nib.load(os.path.join(output_dir, 'Sink_rsa', '1stLevel', '_subject_id_%s', 'spmT_00%s.nii' %(sub_id, stim)))
-#        spmt_vmpfc = masker_vmpfc.fit_transform(spmt)
-#        spmt_vstr = masker_vstr.fit_transform(spmt)
-#        
-#        spmt_allstims_vmpfc[stim_idx, :] = spmt_vmpfc
-#        spmt_allstims_vstr[stim_idx, :] = spmt_vstr
-        
-    # create rdm
-    rdm_vmpfc = 1 - np.corrcoef(spmt_allstims_vmpfc)
-    rdm_vstr = 1 - np.corrcoef(spmt_allstims_vstr)
+    # dictionary to store rdms for all rois
+    rdm_dict = {}
     
-    np.save(rdm_out, {'vmpfc': rdm_vmpfc, 'vstr': rdm_vstr})
-#    np.save(rdm_out, rdm_vmpfc)
+    # loop over all rois
+    for mask_name in all_masks.keys():
+        mask = all_masks[mask_name]
+        masker = NiftiMasker(mask_img=mask)
+        
+        # initiate matrix
+        spmt_allstims_roi= np.zeros((stim_num, np.sum(mask.get_data())))
+            
+        for (stim_idx, spmt_file) in enumerate(in_file):
+            spmt = nib.load(spmt_file)
+          
+            # get each condition's beta
+            spmt_roi = masker.fit_transform(spmt)
+            spmt_allstims_roi[stim_idx, :] = spmt_roi
+        
+        # create rdm
+        rdm_roi = 1 - np.corrcoef(spmt_allstims_roi)
+        
+        rdm_dict[mask_name] = rdm_roi
+        
+    # save    
+    np.save(rdm_out, rdm_dict)
     
     return str(rdm_out)
 
 
 
 get_roi_rdm = Node(util.Function(
-    input_names=['in_file', 'stims', 'mask_vmpfc', 'mask_vstr'],
+    input_names=['in_file', 'stims', 'all_masks'],
     function=compute_roi_rdm, 
     output_names=['rdm_out']),
     name='get_roi_rdm',
@@ -382,11 +405,22 @@ get_roi_rdm.inputs.stims = {'01': 'Med_amb_0', '02': 'Med_amb_1', '03': 'Med_amb
                             '09': 'Mon_amb_0', '10': 'Mon_amb_1', '11': 'Mon_amb_2', '12': 'Mon_amb_3',
                             '13': 'Mon_risk_0', '14': 'Mon_risk_1', '15': 'Mon_risk_2', '16': 'Mon_risk_3'}
 
-# Masker
+# Masker files
 maskfile_vmpfc = os.path.join(output_dir, 'binConjunc_PvNxDECxRECxMONxPRI_vmpfc.nii.gz')
 maskfile_vstr = os.path.join(output_dir, 'binConjunc_PvNxDECxRECxMONxPRI_striatum.nii.gz')
-get_roi_rdm.inputs.mask_vmpfc = nib.load(maskfile_vmpfc)
-get_roi_rdm.inputs.mask_vstr = nib.load(maskfile_vstr)
+maskfile_roi1 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p005_roi1.nii.gz')
+maskfile_roi2 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p005_roi2.nii.gz')
+maskfile_roi3 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p005_roi3.nii.gz')
+
+maskfiles = {'vmpfc': maskfile_vmpfc, 
+             'vstr': maskfile_vstr, 
+             'med_mon_1': maskfile_roi1, 
+             'med_mon_2': maskfile_roi2, 
+             'med_mon_3': maskfile_roi3}
+
+# roi inputs are loaded images
+get_roi_rdm.inputs.all_masks = {key_name: nib.load(maskfiles[key_name]) for key_name in maskfiles.keys()}
+
 
 wfSPM_rsa.connect([
         (contrastestimate, get_roi_rdm, [('spmT_images', 'in_file')]),
@@ -394,18 +428,16 @@ wfSPM_rsa.connect([
 
 #%% data sink rdm
 # Datasink
-datasink_rdm = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_rsa')),
+datasink_rdm = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_resp_rsa_nosmooth')),
                                          name="datasink_rdm")
                        
 
 wfSPM_rsa.connect([
         (get_roi_rdm, datasink_rdm, [('rdm_out', 'rdm.@rdm')]),
         ])
-#%% run
-wfSPM_rsa.run('MultiProc', plugin_args={'n_procs': 8})
-#wfSPM_rsa.run(plugin='Linear', plugin_args={'n_procs': 1})    
+    
 #%%
-# wfSPM.write_graph(graph2use = 'flat')
+wfSPM_rsa.write_graph(graph2use = 'flat')
 
 # # wfSPM.write_graph("workflow_graph.dot", graph2use='colored', format='png', simple_form=True)
 # # wfSPM.write_graph(graph2use='orig', dotfilename='./graph_orig.dot')
@@ -413,3 +445,7 @@ wfSPM_rsa.run('MultiProc', plugin_args={'n_procs': 8})
 # from IPython.display import Image
 # %matplotlib qt
 # Image(filename = '/home/rj299/project/mdm_analysis/work/l1spm/graph.png')
+    
+#%% run
+wfSPM_rsa.run('MultiProc', plugin_args={'n_procs': 4})
+#wfSPM_rsa.run(plugin='Linear', plugin_args={'n_procs': 1})    

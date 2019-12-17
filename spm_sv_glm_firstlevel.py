@@ -39,16 +39,17 @@ data_dir = data_root
 output_dir = os.path.join(out_root, 'imaging')
 work_dir = os.path.join(base_root, 'work') # intermediate products
 
-# subject_list = [2583, 2588]
+subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 
+           2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 
+           2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
+           2664, 2665, 2666]
+
 # task_list = [1,2,3,4,5,6,7,8]
 
-#subject_list = [2588]
-#subject_list = [2073, 2550, 2582, 2583, 2584, 2585]
-#subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 2596]
+#subject_list = [2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 2596, 2597]
+#subject_list = [2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 2654]
+#subject_list = [2656, 2657, 2659, 2660, 2661, 2662, 2663, 2664, 2666]
 
-#subject_list = [2598, 2600, 2624, 2650, 2651, 2652, 2653, 2654, 2655, 2658, 2665]
-#subject_list = [2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 2664, 2665, 2666]
-subject_list = [2073]
 # task_id = [1,2]
 
 fwhm = 6
@@ -130,6 +131,19 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
             runinfo.amplitudes.append(np.round(event.amplitudes.values, 3).tolist())
         else:
             runinfo.amplitudes.append([amplitude] * len(event))
+
+    # response predictor regardless of condition
+    runinfo.conditions.append('Resp')
+    
+    # response predictor when there is a button press
+    resp_mask = events.resp != 2    
+    resp_onset= np.round(events.resp_onset.values[resp_mask] - del_scan + 1, 3).tolist()
+    runinfo.onsets.append(resp_onset)
+    runinfo.durations.append([0] * len(resp_onset))
+    runinfo.amplitudes.append([amplitude] * len(resp_onset))
+    
+    # no parametric modulator for response
+    runinfo.pmod.append(None)
             
            
     if 'regressor_names' in bunch_fields:
@@ -142,7 +156,7 @@ def _bids2nipypeinfo(in_file, events_file, regressors_file,
 templates = {'func': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz'),
              'mask': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz'),
              'regressors': os.path.join(data_root, 'sub-{subject_id}', 'ses-1', 'func', 'sub-{subject_id}_ses-1_task-{task_id}_desc-confounds_regressors.tsv'),
-             'events': os.path.join(out_root, 'event_files', 'sub-{subject_id}_task-{task_id}_cond_v2.csv')}
+             'events': os.path.join(out_root, 'event_files', 'sub-{subject_id}_task-{task_id}_cond_v3.csv')}
 
 # Flexibly collect data from disk to feed into flows.
 selectfiles = pe.Node(nio.SelectFiles(templates,
@@ -223,8 +237,10 @@ cont11 = ['Med_Risk_SV', 'T', cond_names, [0, 0, 0, 1, 0, 0, 0, 0]]
 cont12 = ['Mon_Amb_SV', 'T', cond_names, [0, 0, 0, 0, 0, 1, 0, 0]]
 cont13 = ['Mon_Risk_SV', 'T', cond_names, [0, 0, 0, 0, 0, 0, 0, 1]]
 
+cont14 = ['Response', 'T', ['Resp'], [1]]
 
-contrasts = [cont1, cont2, cont3, cont4, cont5, cont6, cont7, cont8, cont9, cont10, cont11, cont12, cont13]
+
+contrasts = [cont1, cont2, cont3, cont4, cont5, cont6, cont7, cont8, cont9, cont10, cont11, cont12, cont13, cont14]
 
 # cont1 = ['Med_Amb', 'T', ['Med_amb', 'Med_risk'], [1, 0]]
 # cont2 = ['Med_Risk', 'T', ['Med_amb', 'Med_risk'], [0, 1]]
@@ -247,7 +263,7 @@ level1design.inputs.bases = {'hrf': {'derivs': [0, 0]}}
 level1design.inputs.model_serial_correlations = 'AR(1)'
 
 # create workflow
-wfSPM = Workflow(name="l1spm_sv_glm_v2", base_dir=work_dir)
+wfSPM = Workflow(name="l1spm_resp_sv", base_dir=work_dir)
 wfSPM.connect([
         (infosource, selectfiles, [('subject_id', 'subject_id')]),
         (selectfiles, runinfo, [('events','events_file'),('regressors','regressors_file')]),
@@ -282,9 +298,17 @@ wfSPM.connect([
 #%% Adding data sink
 ########################################################################
 # Datasink
-datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_sv_glm')),
+datasink = Node(nio.DataSink(base_directory=os.path.join(output_dir, 'Sink_resp_sv')),
                                          name="datasink")
                        
+wfSPM.connect([
+        (level1estimate, datasink, [('beta_images',  '1stLevel.@betas.@beta_images'),
+                                    ('residual_image', '1stLevel.@betas.@residual_image'),
+                                    ('residual_images', '1stLevel.@betas.@residual_images'),
+                                    ('SDerror', '1stLevel.@betas.@SDerror'),
+                                    ('SDbetas', '1stLevel.@betas.@SDbetas'),
+                ])
+        ])
 
 wfSPM.connect([
        # here we take only the contrast ad spm.mat files of each subject and put it in different folder. It is more convenient like that. 
