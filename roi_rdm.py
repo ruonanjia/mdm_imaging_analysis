@@ -71,7 +71,7 @@ def compute_roi_rdm(in_file,
         masker = NiftiMasker(mask_img=mask)
         
         # initiate matrix
-        spmt_allstims_roi= np.zeros((stim_num, np.sum(mask.get_data())))
+        spmt_allstims_roi= np.zeros((stim_num, np.sum(mask.get_data()).astype(int)))
             
         for (stim_idx, spmt_file) in enumerate(in_file):
             spmt = nib.load(spmt_file)
@@ -107,15 +107,60 @@ get_roi_rdm.inputs.stims = {'01': 'Med_amb_0', '02': 'Med_amb_1', '03': 'Med_amb
 # Masker files
 maskfile_vmpfc = os.path.join(output_dir, 'binConjunc_PvNxDECxRECxMONxPRI_vmpfc.nii.gz')
 maskfile_vstr = os.path.join(output_dir, 'binConjunc_PvNxDECxRECxMONxPRI_striatum.nii.gz')
+
 maskfile_roi1 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p001_roi1.nii.gz')
 maskfile_roi2 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p001_roi2.nii.gz')
 maskfile_roi3 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p001_roi3.nii.gz')
+
+maskfile_gilaie_rppc = os.path.join(output_dir, 'Gilaie-DotanEtAl_2014_Study1_rPPC-NScorr-Thres250Voxels_roi.nii')
+
+maskfile_zhang_val_lppc = os.path.join(output_dir, 'zhang_nn_2017_value_sphere_lppc.nii.gz')
+maskfile_zhang_val_lofc = os.path.join(output_dir, 'zhang_nn_2017_value_sphere_lofc.nii.gz')
+maskfile_zhang_val_rofc = os.path.join(output_dir, 'zhang_nn_2017_value_sphere_rofc.nii.gz')
+maskfile_zhang_val_lingual = os.path.join(output_dir, 'zhang_nn_2017_value_sphere_lingual.nii.gz')
+
+maskfile_zhang_sal_acc = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_acc.nii.gz')
+maskfile_zhang_sal_lprecentral = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_lprecentral.nii.gz')
+maskfile_zhang_sal_lcaudate = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_lcaudate.nii.gz')
+maskfile_zhang_sal_rcaudate = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_rcaudate.nii.gz')
+maskfile_zhang_sal_linsula = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_linsula.nii.gz')
+maskfile_zhang_sal_rinsula = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_rinsula.nii.gz')
+maskfile_zhang_sal_lingual = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_lingual.nii.gz')
+
+maskfile_levy_amb_striatum = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_striatum.nii.gz')
+maskfile_levy_amb_mpfc = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_mpfc.nii.gz')
+maskfile_levy_amb_ppc = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_pcc.nii.gz')
+maskfile_levy_amb_lamyg = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_lamyg.nii.gz')
+maskfile_levy_amb_sts = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_sts.nii.gz')
+
+maskfile_levy_risk_striatum = os.path.join(output_dir, 'levy_jn_2010_risk_sphere_striatum.nii.gz')
+maskfile_levy_risk_mpfc = os.path.join(output_dir, 'levy_jn_2010_risk_sphere_mpfc.nii.gz')
 
 maskfiles = {'vmpfc': maskfile_vmpfc, 
              'vstr': maskfile_vstr, 
              'med_mon_1': maskfile_roi1, 
              'med_mon_2': maskfile_roi2, 
-             'med_mon_3': maskfile_roi3}
+             'med_mon_3': maskfile_roi3,
+             'gilaie_rppc': maskfile_gilaie_rppc,
+             'zhang_val_lppc': maskfile_zhang_val_lppc,
+             'zhang_val_lofc': maskfile_zhang_val_lofc,
+             'zhang_val_rofc': maskfile_zhang_val_rofc,
+             'zhang_val_lingual': maskfile_zhang_val_lingual,
+             'zhang_sal_acc': maskfile_zhang_sal_acc,
+             'zhang_sal_lprecentral': maskfile_zhang_sal_lprecentral,
+             'zhang_sal_lcaudate': maskfile_zhang_sal_lcaudate,
+             'zhang_sal_rcaudate': maskfile_zhang_sal_rcaudate,
+             'zhang_sal_linsula': maskfile_zhang_sal_linsula,
+             'zhang_sal_rinsula': maskfile_zhang_sal_rinsula,
+             'zhang_sal_lingual': maskfile_zhang_sal_lingual,
+             'levy_amb_striatum': maskfile_levy_amb_striatum,
+             'levy_amb_mpfc': maskfile_levy_amb_mpfc,
+             'levy_amb_ppc': maskfile_levy_amb_ppc,
+             'levy_amb_lamyg': maskfile_levy_amb_lamyg,
+             'levy_amb_sts': maskfile_levy_amb_sts,
+             'levy_risk_striatum': maskfile_levy_risk_striatum,
+             'levy_risk_mpfc': maskfile_levy_risk_mpfc
+             }
 
 # roi inputs are loaded images
 get_roi_rdm.inputs.all_masks = {key_name: nib.load(maskfiles[key_name]) for key_name in maskfiles.keys()}
