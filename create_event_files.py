@@ -22,7 +22,8 @@ sub_num = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 2596, 259
 #sub_nums = [2599, 2661]
     
 #%% read parameters to calculate SV
-par = pd.read_csv(os.path.join(data_behav_root, 'par_09300219.csv'))
+#par = pd.read_csv(os.path.join(data_behav_root, 'par_09300219.csv'))
+par = pd.read_csv(os.path.join(data_behav_root, 'par_mon_ambigNrisk_08220219.csv'))
 
 #%% calculate SV
 def ambig_utility(sub_id, par, p, a, obj_val, domain, model):
@@ -42,34 +43,46 @@ def ambig_utility(sub_id, par, p, a, obj_val, domain, model):
     Output:
         sv: subjective values of lotteries, vector
     '''
-    
     if domain == 'Med':
         domain_idx = 1
     elif domain == 'Mon':
         domain_idx = 0
-        
+    
     par_sub = par[(par.id == sub_id) & (par.is_med == domain_idx)]
-    
-    beta = par_sub.iloc[0]['beta']
-    val1 = par_sub.iloc[0]['val1']
-    val2 = par_sub.iloc[0]['val2']
-    val3 = par_sub.iloc[0]['val3']
-    val4 = par_sub.iloc[0]['val4']
-    
-    val = np.zeros(obj_val.shape)
-    val[obj_val == 5] = val1
-    val[obj_val == 8] = val2
-    val[obj_val == 12] = val3
-    val[obj_val == 25] = val4
-    
-    
-    if model == 'ambigSVPar':       
-        sv = (p - beta * a/2) * val
+            
+    if model == 'ambigSVPar':
         
-    ref_sv = np.ones(obj_val.shape) * val1
+        beta = par_sub.iloc[0]['beta']
+        val1 = par_sub.iloc[0]['val1']
+        val2 = par_sub.iloc[0]['val2']
+        val3 = par_sub.iloc[0]['val3']
+        val4 = par_sub.iloc[0]['val4']
+        
+        val = np.zeros(obj_val.shape)
+        val[obj_val == 5] = val1
+        val[obj_val == 8] = val2
+        val[obj_val == 12] = val3
+        val[obj_val == 25] = val4
+           
+        sv = (p - beta * a/2) * val
+            
+        ref_sv = np.ones(obj_val.shape) * val1
+            
+    elif model == 'ambigNrisk':
+        if domain == 'Mon':
+            alpha = par_sub.iloc[0]['alpha']
+            beta = par_sub.iloc[0]['beta']
+            
+            sv = (p - beta * a/2) * obj_val**alpha
+            
+            ref_sv = np.ones(obj_val.shape) * 5** alpha
+        
+        elif domain == 'Med':
+            sv = obj_val
+            
+            ref_sv = np.ones(obj_val.shape) * 5
         
     return sv, ref_sv
-
 
 #%%
 def _todict(matobj):
@@ -146,7 +159,8 @@ def readConditions(subNum, domain, matFile, x): # takes name of file and when to
     ambigs = metaData[data_keyname]['ambigs']
     probs = metaData[data_keyname]['probs']
     vals = metaData[data_keyname]['vals']
-    svs, ref_svs = ambig_utility(subNum, par, probs, ambigs, vals, domain, 'ambigSVPar')
+#    svs, ref_svs = ambig_utility(subNum, par, probs, ambigs, vals, domain, 'ambigSVPar')
+    svs, ref_svs = ambig_utility(subNum, par, probs, ambigs, vals, domain, 'ambigNrisk')
     choice = metaData[data_keyname]['choice']
     refside = metaData[data_keyname]['refSide']
     
@@ -284,5 +298,5 @@ for sub_id in sub_num:
     # write into csv
     
     for task_id in range(8):
-        pd.DataFrame(totalEvent_sub[task_id]).to_csv(os.path.join(out_root, 'event_files', 'sub-' + str(sub_id)+ '_task-' +str(task_id+1) + '_cond_v3.csv'), 
+        pd.DataFrame(totalEvent_sub[task_id]).to_csv(os.path.join(out_root, 'event_files', 'sub-' + str(sub_id)+ '_task-' +str(task_id+1) + '_cond_v4.csv'), 
                           index = False, sep = '\t')    
