@@ -325,7 +325,7 @@ wfSPM.connect([
 wfSPM.run('MultiProc', plugin_args={'n_procs': 4})
 #wfSPM.run(plugin='Linear', plugin_args={'n_procs': 1})    
 #%%
-# wfSPM.write_graph(graph2use = 'flat')
+wfSPM.write_graph(graph2use = 'flat')
 
 # # wfSPM.write_graph("workflow_graph.dot", graph2use='colored', format='png', simple_form=True)
 # # wfSPM.write_graph(graph2use='orig', dotfilename='./graph_orig.dot')

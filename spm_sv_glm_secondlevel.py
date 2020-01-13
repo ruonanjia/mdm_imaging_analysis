@@ -34,24 +34,24 @@ level2conestimate.inputs.contrasts = [cont1]
 
 # Which contrasts to use for the 2nd-level analysis
 contrast_list = ['con_0001', 'con_0002', 'con_0003', 'con_0004', 'con_0005',
-                 'con_0006', 'con_0007', 'con_0008', 'con_0009']
-
-#contrast_list = ['con_0010', 'con_0011', 'con_0012', 'con_0013']
+                 'con_0006', 'con_0007', 'con_0008', 'con_0009', 'con_0010',
+                 'con_0011', 'con_0012', 'con_0013', 'con_0014']
 
 subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 
                 2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 
                 2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
-                2664, 2666]
+                2664, 2665, 2666]
 
 
 # Threshold - thresholds contrasts
 level2thresh = Node(spm.Threshold(contrast_index=1,
-                              use_topo_fdr=False,
-                              use_fwe_correction=True, # here we can use fwe or fdr
-                              extent_threshold=10,
-                              height_threshold= 0.005,
+                              use_topo_fdr=True,
+#                              use_fwe_correction=True, # here we can use fwe or fdr, default is true
+#                              extent_threshold=10,
+#                              height_threshold= 0.05, # default is 0.05
                               extent_fdr_p_threshold = 0.05,
-                              height_threshold_type='p-value'),
+                              height_threshold_type='p-value', # default is p-value
+                              ),
                               
                                    name="level2thresh")
 
@@ -63,7 +63,7 @@ infosource.iterables = [('contrast_id', contrast_list)]
 infosource.inputs.subject_id = subject_list
 
 # SelectFiles - to grab the data (alternative to DataGrabber)
-templates = {'cons': os.path.join('/home/rj299/scratch60/mdm_analysis/output/imaging/Sink_sv_glm/1stLevel/_subject_id_{subject_id}/', 
+templates = {'cons': os.path.join('/home/rj299/scratch60/mdm_analysis/output/imaging/Sink_resp_sv/1stLevel/_subject_id_{subject_id}/', 
                          '{contrast_id}.nii')}
 
 selectfiles = MapNode(SelectFiles(templates,
@@ -72,11 +72,11 @@ selectfiles = MapNode(SelectFiles(templates,
                    name="selectfiles", 
                    iterfield = ['subject_id'])
 
-datasink = Node(nio.DataSink(base_directory='/home/rj299/scratch60/mdm_analysis/output/imaging/Sink_sv_glm/'),
+datasink = Node(nio.DataSink(base_directory='/home/rj299/scratch60/mdm_analysis/output/imaging/Sink_resp_sv/'),
                 name="datasink")
 
 
-l2analysis = Workflow(name='l2spm_sv_glm')
+l2analysis = Workflow(name='l2spm_sv_glm_heightp05')
 
 l2analysis.base_dir = '/home/rj299/scratch60/mdm_analysis/work/'
 
@@ -99,13 +99,14 @@ l2analysis.connect([(infosource, selectfiles, [('contrast_id', 'contrast_id'),
                                                         'stat_image'),
                                                        ]),
                     (level2conestimate, datasink, [('spm_mat_file',
-                        '2ndLevel_cluster.@spm_mat'),
+                        '2ndLevel_heightp05.@spm_mat'),
                        ('spmT_images',
-                        '2ndLevel_cluster.@T'),
+                        '2ndLevel_heightp05.@T'),
                        ('con_images',
-                        '2ndLevel_cluster.@con')]),
+                        '2ndLevel_heightp05.@con')]),
                     (level2thresh, datasink, [('thresholded_map',
-                                               '2ndLevel_cluster.@threshold')]),
+                                               '2ndLevel_heightp05.@threshold')]),
                                                         ])
 #%%                                                     
-l2analysis.run('MultiProc', plugin_args={'n_procs': 2})
+#l2analysis.run('MultiProc', plugin_args={'n_procs': 2})
+l2analysis.run('Linear', plugin_args={'n_procs': 1})

@@ -3,11 +3,13 @@
 """
 Created on Tue Sep 24 23:49:09 2019
 
+Reference: https://github.com/poldracklab/ds003-post-fMRIPrep-analysis/blob/master/workflows.py
+
 @author: rj299
 """
 import nipype.interfaces.io as nio  # Data i/o
 from nipype.interfaces import spm
-from nipype import Node, Workflow
+from nipype import Node, Workflow, MapNode
 import nipype.interfaces.utility as util # utility
 from nipype import SelectFiles
 import os
@@ -32,43 +34,52 @@ level2conestimate.inputs.contrasts = [cont1]
 
 # Which contrasts to use for the 2nd-level analysis
 contrast_list = ['con_0001', 'con_0002', 'con_0003', 'con_0004', 'con_0005',
-                 'con_0006', 'con_0007', 'con_0008', 'con_0009']
+                 'con_0006', 'con_0007', 'con_0008', 'con_0009', 'con_0010']
+
+subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 
+                2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 
+                2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
+                2664, 2665, 2666]
 
 # Threshold - thresholds contrasts
 level2thresh = Node(spm.Threshold(contrast_index=1,
-                              use_topo_fdr=False,
+                              use_topo_fdr=True,
                               use_fwe_correction=True, # here we can use fwe or fdr
                               extent_threshold=10,
-                              height_threshold= 0.005,
+                              height_threshold= 0.05,
                               extent_fdr_p_threshold = 0.05,
                               height_threshold_type='p-value'),
                               
                                    name="level2thresh")
 
  #Infosource - a function free node to iterate over the list of subject names
-infosource = Node(util.IdentityInterface(fields=['contrast_id']),
+infosource = Node(util.IdentityInterface(fields=['contrast_id', 'subject_id']),
                   name="infosource")
+
 infosource.iterables = [('contrast_id', contrast_list)]
+infosource.inputs.subject_id = subject_list
 
 # SelectFiles - to grab the data (alternative to DataGrabber)
-templates = {'cons': os.path.join('/home/rj299/project/mdm_analysis/output/imaging/Sink/1stLevel/_subject_id_*/', 
+templates = {'cons': os.path.join('/home/rj299/scratch60/mdm_analysis/output/imaging/Sink_resp/1stLevel/_subject_id_{subject_id}/', 
                          '{contrast_id}.nii')}
 
-selectfiles = Node(SelectFiles(templates,
-                               base_directory='/home/rj299/project/mdm_analysis/work/',
+selectfiles = MapNode(SelectFiles(templates,
+                               base_directory='/home/rj299/scratch60/mdm_analysis/work/',
                                sort_filelist=True),
-                   name="selectfiles")
+                   name="selectfiles", 
+                   iterfield = ['subject_id'])
 
-datasink = Node(nio.DataSink(base_directory='/home/rj299/project/mdm_analysis/output/imaging/Sink/'),
+datasink = Node(nio.DataSink(base_directory='/home/rj299/scratch60/mdm_analysis/output/imaging/Sink_resp/'),
                 name="datasink")
 
 
-l2analysis = Workflow(name='l2spm')
+l2analysis = Workflow(name='l2spm_heightp05')
 
-l2analysis.base_dir = '/home/rj299/project/mdm_analysis/work/'
+l2analysis.base_dir = '/home/rj299/scratch60/mdm_analysis/work/'
 
 l2analysis.connect([(infosource, selectfiles, [('contrast_id', 'contrast_id'),
-                                               ]),
+                                               ('subject_id', 'subject_id')]),
+
                     (selectfiles, onesamplettestdes, [('cons', 'in_files')]),
                     
                     (onesamplettestdes, level2estimate, [('spm_mat_file',
@@ -85,13 +96,16 @@ l2analysis.connect([(infosource, selectfiles, [('contrast_id', 'contrast_id'),
                                                         'stat_image'),
                                                        ]),
                     (level2conestimate, datasink, [('spm_mat_file',
-                        '2ndLevel.@spm_mat'),
+                        '2ndLevel_heightp05.@spm_mat'),
                        ('spmT_images',
-                        '2ndLevel.@T'),
+                        '2ndLevel_heightp05.@T'),
                        ('con_images',
-                        '2ndLevel.@con')]),
+                        '2ndLevel_heightp05.@con')]),
                     (level2thresh, datasink, [('thresholded_map',
-                                               '2ndLevel.@threshold')]),
+                                               '2ndLevel_heightp05.@threshold')]),
                                                         ])
+#%% graph
+l2analysis.write_graph(graph2use = 'flat')
 #%%                                                     
-l2analysis.run('MultiProc', plugin_args={'n_procs': 3})
+#l2analysis.run('MultiProc', plugin_args={'n_procs': 3})
+l2analysis.run('Linear', plugin_args={'n_procs': 1})
