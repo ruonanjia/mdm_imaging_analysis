@@ -129,7 +129,7 @@ maskfile_zhang_sal_lingual = os.path.join(output_dir, 'zhang_nn_2017_saliency_sp
 
 maskfile_levy_amb_striatum = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_striatum.nii.gz')
 maskfile_levy_amb_mpfc = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_mpfc.nii.gz')
-maskfile_levy_amb_ppc = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_pcc.nii.gz')
+maskfile_levy_amb_pcc = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_pcc.nii.gz')
 maskfile_levy_amb_lamyg = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_lamyg.nii.gz')
 maskfile_levy_amb_sts = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_sts.nii.gz')
 
@@ -155,7 +155,7 @@ maskfiles = {'vmpfc': maskfile_vmpfc,
              'zhang_sal_lingual': maskfile_zhang_sal_lingual,
              'levy_amb_striatum': maskfile_levy_amb_striatum,
              'levy_amb_mpfc': maskfile_levy_amb_mpfc,
-             'levy_amb_ppc': maskfile_levy_amb_ppc,
+             'levy_amb_pcc': maskfile_levy_amb_pcc,
              'levy_amb_lamyg': maskfile_levy_amb_lamyg,
              'levy_amb_sts': maskfile_levy_amb_sts,
              'levy_risk_striatum': maskfile_levy_risk_striatum,

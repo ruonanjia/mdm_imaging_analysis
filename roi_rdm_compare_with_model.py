@@ -15,9 +15,9 @@ if not sys.warnoptions:
 import os
 import numpy as np
 import pandas as pd
-import scipy.io
+#import scipy.io
 from scipy import stats
-import scipy.spatial.distance as sp_distance
+#import scipy.spatial.distance as sp_distance
 
 import nibabel as nib
 
@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import matplotlib.pylab as pylab
 
 import seaborn as sns 
-from sklearn.preprocessing import normalize
+#from sklearn.preprocessing import normalize
 
 sns.set(style = 'white', context='poster', rc={"lines.linewidth": 2.5})
 
