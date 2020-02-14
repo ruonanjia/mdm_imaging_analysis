@@ -306,7 +306,7 @@ def plot_permutation_null(r_perm, out_fig, sig_level = 0.05, save = False):
 #%%
 base_root = '/home/rj299/scratch60/mdm_analysis/'
 data_root = '/home/rj299/scratch60/mdm_analysis/output/imaging/Sink_resp_rsa_nosmooth/1stLevel/'
-data_behav_root = '/home/rj299/scratch60/mdm_analysis/data_behav'
+data_behav_root = '/home/rj299/project/mdm_analysis/data_behav'
 out_root = '/home/rj299/scratch60/mdm_analysis/output/'
 out_fig = os.path.join(out_root, 'imaging', 'Sink_resp_rsa_nosmooth', 'roi_compare_with_model')
 anat_mean = nib.load(os.path.join(out_root, 'imaging', 'all_sub_average.nii.gz'))
@@ -399,9 +399,7 @@ for mon_mask_idx in mon_mask:
 for med_mask_idx in med_mask:  
     mod_rdm_domain[med_mask_idx] = 0
 
-plot_model_rdm(mod_rdm_domain, 'domain', out_fig, True)
-
-
+plot_model_rdm(mod_rdm_domain, 'domain', out_fig, False)
 #%% Model RDM risk/ambig difference
 mod_rdm_uncert = np.ones([16,16])
 
@@ -416,17 +414,17 @@ for risk_mask_idx in risk_mask:
 for amb_mask_idx in amb_mask:  
     mod_rdm_uncert[amb_mask_idx] = 0
 
-plot_model_rdm(mod_rdm_uncert, 'uncertainty', out_fig, True)
+plot_model_rdm(mod_rdm_uncert, 'uncertainty', out_fig, False)
 
 
 #%% Model RDM value (outcome magnitude) difference
 mod_rdm_val = np.ones([16,16])
 
-level = np.array([0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3])
+level = np.array([1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4])
 
 for i in range(len(level)):
     for j in range(len(level)):
-        mod_rdm_val[i, j] = abs(level[i] - level[j])/3
+        mod_rdm_val[i, j] = abs(level[i] - level[j])/4
         
 plot_model_rdm(mod_rdm_val, 'value', out_fig, True)
 
@@ -550,6 +548,9 @@ for mod_name in mod_rdm.keys():
 # add the models with indiviudal model RDMs    
 mod_rdm_vector['sv'] = mod_rdm_vector_individual['sv']    
 mod_rdm_vector['rating'] = mod_rdm_vector_individual['rating']
+
+# save this dictionary
+#np.save(os.path.join(out_fig, 'model_rdms_vector.npy'), mod_rdm_vector)
 
 #%% plot ROI rdms correlation with model spearman rho distribution
 #roi_names = ['vmpfc', 'vstr']
