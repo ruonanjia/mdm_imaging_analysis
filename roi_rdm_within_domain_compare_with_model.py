@@ -208,27 +208,29 @@ def plot_r_hist(r, domain_name, out_fig, save = False):
 # do this for each model, each roi
 
 def permutation_test(subjects, roi_names, mod_rdm_vector, out_fig,
-                    iter_num = 1000, perm_num = 100):
+                    iter_num = 1000, perm_num = 100, save = False):
     
     import numpy as np
 #     iter_num number of iteration
 #     perm_num number of subjects (permutation)
     
-    mod_names = list(mod_rdm_vector.keys())
+    domain_names = list(mod_rdm_vector.keys())
+    mod_names = list(mod_rdm_vector[domain_names[1]].keys())
     
     r_perm = {roi_name: {} for roi_name in roi_names}
 
     # each model
     for (roi_idx, roi_name) in enumerate(roi_names):
 
-        r_perm_roi = {mod_name: [] for mod_name in mod_names}
+        r_perm_roi = {mod_name: {} for mod_name in mod_names}
 
         # each ROI
         for (mod_idx, mod_name) in enumerate(mod_names):
-
+            r_perm_roi[mod_name] = {'med': [], 'mon': []}
+            
             for iter_idx in range(iter_num): 
 
-                rho_perm = []
+                rho_perm_domain = {'med': [], 'mon': []}
 
                 for perm_idx in range(perm_num):
                     # randomly select a subject
@@ -238,11 +240,13 @@ def permutation_test(subjects, roi_names, mod_rdm_vector, out_fig,
 
                     # get dictionary type
                     roi_rdm = roi_rdm_obj.item()
-
-                    rdm_perm = roi_rdm[roi_name]
+                    
+                    rdm_perm_med = roi_rdm[roi_name][0:8, 0:8]
+                    rdm_perm_mon = roi_rdm[roi_name][8:16, 8:16]
 
                     # shuffle columns
-                    np.random.shuffle(rdm_perm)
+                    np.random.shuffle(rdm_perm_med)
+                    np.random.shuffle(rdm_perm_mon)
 
     #                 # permute columns of matrix
     #                 columns = list(range(roi_rdm[roi_name].shape(0)))
@@ -251,26 +255,33 @@ def permutation_test(subjects, roi_names, mod_rdm_vector, out_fig,
 
     #                 rdm_perm = np.argsort(columns_perm)
 
-                    # spearman bween model rdm and individual rdm, half matrix
-                    _, rdm_vector_perm = half_matrix(rdm_perm)
-
-    #                 rdm_vector_perm = np.random.permutation(rdm_vector)
-                    if mod_name == 'sv_domain' or mod_name == 'rating_domain':
-                    # for these two models, model rdm is different for each individual
-                    # thus, mode_rdm_vector[mod_name] is a dictionary, each subject in an item
-                        rho_i, pvalue_i = stats.spearmanr(rdm_vector_perm, mod_rdm_vector[mod_name][sub])
-                    else:
-                        rho_i, pvalue_i = stats.spearmanr(rdm_vector_perm, mod_rdm_vector[mod_name])
-
-                    rho_perm.append(rho_i)
-
-                r_perm_roi[mod_name].append(np.median(rho_perm))
+                    # spearman bween model rdm and individual shuffled rdm, half matrix
+                    _, rdm_vector_perm_med = half_matrix(rdm_perm_med)
+                    _, rdm_vector_perm_mon = half_matrix(rdm_perm_mon)
+                    
+                    rdm_vector_perm = {'med': rdm_vector_perm_med, 'mon': rdm_vector_perm_mon}
+                    
+                    for (domain_idx, domain_name) in enumerate(domain_names):
+                        if mod_name == 'sv_domain' or mod_name == 'rating_domain':
+                        # for these two models, model rdm is different for each individual
+                        # thus, mode_rdm_vector[mod_name] is a dictionary, each subject in an item
+                            rho_i, pvalue_i = stats.spearmanr(rdm_vector_perm[domain_name], mod_rdm_vector[domain_name][mod_name][sub])
+                        else:
+                            rho_i, pvalue_i = stats.spearmanr(rdm_vector_perm[domain_name], mod_rdm_vector[domain_name][mod_name])
+                        
+                        # single permutation of one random subject, length of list = perm_num
+                        rho_perm_domain[domain_name].append(rho_i)
+                
+                # median of a single iteration, length od list = iter_num 
+                r_perm_roi[mod_name]['med'].append(np.median(rho_perm_domain['med']))
+                r_perm_roi[mod_name]['mon'].append(np.median(rho_perm_domain['mon']))
                 
                 print('Model %s, ROI %s, iteration %s finished' %(mod_name, roi_name, iter_idx+1))
 
         r_perm[roi_name] = r_perm_roi
         
-        np.save(os.path.join(out_fig, 'perm_null_%s.npy' %roi_name), r_perm_roi)
+        if save:
+            np.save(os.path.join(out_fig, 'perm_null_domain_%s.npy' %roi_name), r_perm_roi)
     
     return r_perm
 
@@ -282,37 +293,40 @@ def plot_permutation_null(r_perm, out_fig, sig_level = 0.05, save = False):
 #     sig_level = 0.05
     roi_names = list(r_perm.keys())
     mod_names = list(r_perm[roi_names[0]].keys())
+    domain_names = list(r_perm[roi_names[0]][mod_names[0]].keys())
     
     for (roi_idx, roi_name) in enumerate(roi_names):
+        
+        for (domain_idx, domain_name) in enumerate(domain_names):
     
 
-        f, ax = plt.subplots(len(mod_names), 1, figsize = (5,5 * len(mod_names)))
-        for (mod_idx, mod_name) in enumerate(mod_names):
-            # plot distribution
-            ax[mod_idx].hist(r_perm[roi_name][mod_name], bins = 30)
-
-            # plot critical value
-            n_iter = len(r_perm[roi_name][mod_name])
-            # two-tailed
-            critical_up_idx = int(n_iter * (1-sig_level/2))
-            critical_low_idx = int(n_iter * (sig_level/2))
-            
-            r_sorted = np.sort(r_perm[roi_name][mod_name])
-            critical_up = r_sorted[critical_up_idx]
-            critical_low = r_sorted[critical_low_idx]
-            ax[mod_idx].vlines(critical_up, ymin=0, ymax=ax[mod_idx].get_ylim()[1], 
-                               colors = 'r', linestyles = 'dashed')
-            ax[mod_idx].vlines(critical_low, ymin=0, ymax=ax[mod_idx].get_ylim()[1], 
-                               colors = 'r', linestyles = 'dashed')
-            
-            ax[mod_idx].legend(['critical_low = %s' %round(critical_low,3),
-                                'critical_up = %s' %round(critical_up,3)],
-                              loc = 'upper left')
-
-            ax[mod_idx].set_title('Spearman r perm null, '+mod_name+', '+roi_name)   
-            
-        if save:    
-            f.savefig(os.path.join(out_fig, 'r_with_model_hist_%s_perm_null.eps' %roi_name), format = 'eps')  
+            f, ax = plt.subplots(len(mod_names), 1, figsize = (5,5 * len(mod_names)))
+            for (mod_idx, mod_name) in enumerate(mod_names):
+                # plot distribution
+                ax[mod_idx].hist(r_perm[roi_name][mod_name][domain_name], bins = 30)
+    
+                # plot critical value
+                n_iter = len(r_perm[roi_name][mod_name][domain_name])
+                # two-tailed
+                critical_up_idx = int(n_iter * (1-sig_level/2))
+                critical_low_idx = int(n_iter * (sig_level/2))
+                
+                r_sorted = np.sort(r_perm[roi_name][mod_name][domain_name])
+                critical_up = r_sorted[critical_up_idx]
+                critical_low = r_sorted[critical_low_idx]
+                ax[mod_idx].vlines(critical_up, ymin=0, ymax=ax[mod_idx].get_ylim()[1], 
+                                   colors = 'r', linestyles = 'dashed')
+                ax[mod_idx].vlines(critical_low, ymin=0, ymax=ax[mod_idx].get_ylim()[1], 
+                                   colors = 'r', linestyles = 'dashed')
+                
+                ax[mod_idx].legend(['critical_low = %s' %round(critical_low,3),
+                                    'critical_up = %s' %round(critical_up,3)],
+                                  loc = 'upper left')
+    
+                ax[mod_idx].set_title('Spearman r perm null, '+mod_name+', '+roi_name+', '+domain_name)   
+                
+            if save:    
+                f.savefig(os.path.join(out_fig, 'r_with_model_domain_hist_%s_%s_perm_null.eps' %(roi_name, domain_name)), format = 'eps')  
            
 #%%
 base_root = '/home/rj299/scratch60/mdm_analysis/'
@@ -595,7 +609,7 @@ mod_rdm_vector_domain = {'med': mod_rdm_vector_med,
 np.save(os.path.join(out_fig, 'model_rdms_vector_domain.npy'), mod_rdm_vector_domain)
 
 #%% plot ROI rdms correlation with model spearman rho distribution
-#roi_names = ['vmpfc', 'vstr']
+roi_names = ['vmpfc', 'vstr']
 roi_names = roi_names_all
 
 # plot correlation with model
@@ -616,7 +630,8 @@ plot_r_hist(spearman_r, 'mon', out_fig, False)
 # plot null distribution from permutation 
 spearman_r_perm = permutation_test(subjects, roi_names, mod_rdm_vector_domain, out_fig,
                                    iter_num = 2000, # default: 1000
-#                                   perm_num = 50 # default: 100
+                                   perm_num = 100, # default: 100
+                                   save = True
                                   )
 
 #%%
