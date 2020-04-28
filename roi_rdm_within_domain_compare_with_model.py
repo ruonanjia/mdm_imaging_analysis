@@ -609,8 +609,33 @@ mod_rdm_vector_domain = {'med': mod_rdm_vector_med,
 np.save(os.path.join(out_fig, 'model_rdms_vector_domain.npy'), mod_rdm_vector_domain)
 
 #%% plot ROI rdms correlation with model spearman rho distribution
-roi_names = ['vmpfc', 'vstr']
-roi_names = roi_names_all
+#roi_names = ['vmpfc', 'vstr']
+#roi_names = roi_names_all
+roi_names = [
+#         'vmpfc',
+#         'vstr',
+#         'med_mon_1',
+#         'med_mon_2',
+#         'med_mon_3',
+#         'gilaie_rppc',
+#         'zhang_val_lppc',
+#         'zhang_val_lofc',
+#         'zhang_val_rofc',
+#         'zhang_val_lingual',
+#         'zhang_sal_acc',
+#         'zhang_sal_lprecentral',
+#         'zhang_sal_lcaudate',
+#         'zhang_sal_rcaudate',
+         'zhang_sal_linsula',
+         'zhang_sal_rinsula',
+         'zhang_sal_lingual',
+         'levy_amb_striatum',
+         'levy_amb_mpfc',
+         'levy_amb_ppc',
+         'levy_amb_lamyg',
+         'levy_amb_sts',
+         'levy_risk_striatum',
+         'levy_risk_mpfc']
 
 # plot correlation with model
 spearman_r, spearman_p = compare_with_model(subjects, roi_names, mod_rdm_vector_domain, out_fig)
