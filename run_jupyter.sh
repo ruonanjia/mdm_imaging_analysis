@@ -4,7 +4,7 @@
 #SBATCH --time 16:00:00
 #SBATCH --ntasks-per-node 1
 #SBATCH --mem-per-cpu 8G
-#SBATCH --jupyter-notebook
+#SBATCH --job-name jupyter-notebook
 #SBATCH --output jupyter-log-%J.txt
 
 ## get tunneling info
@@ -38,5 +38,7 @@ echo -e "
 ## module load brainiak/0.8-Python-Anaconda3
 ## module load nilearn/0.5.0-Python-Anaconda3
 ## module load OpenMPI/2.1.2-GCC-6.4.0-2.28
+module load miniconda
+source activate py37_dev
 
 jupyter-notebook --no-browser --port=${port} --ip=${node}
