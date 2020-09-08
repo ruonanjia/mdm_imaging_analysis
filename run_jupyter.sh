@@ -39,6 +39,8 @@ echo -e "
 ## module load nilearn/0.5.0-Python-Anaconda3
 ## module load OpenMPI/2.1.2-GCC-6.4.0-2.28
 module load miniconda
+module load FSL
+module load MATLAB
 source activate py37_dev
 
 jupyter-notebook --no-browser --port=${port} --ip=${node}
