@@ -41,7 +41,7 @@ work_dir = os.path.join(base_root, 'work') # intermediate products
 
 # task_list = [1,2,3,4,5,6,7,8]
 
-subject_list = [2656]
+#subject_list = [2656]
 
 #subject_list = [2656, 2624, 2598]
 # 2597
@@ -55,10 +55,10 @@ subject_list = [2656]
 #           2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
 #           2664, 2665, 2666]
 
-#subject_list = [2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 
-#           2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 
-#           2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
-#           2664, 2665, 2666]
+subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 
+           2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 
+           2654, 2655, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
+           2664, 2665, 2666]
 
 # task_id = [1,2]
 
@@ -368,8 +368,8 @@ wfSPM.connect([
         ])
 
 #%% run
-#wfSPM.run('MultiProc', plugin_args={'n_procs': 4})
-wfSPM.run('Linear', plugin_args={'n_procs': 1})
+wfSPM.run('MultiProc', plugin_args={'n_procs': 4})
+#wfSPM.run('Linear', plugin_args={'n_procs': 1})
     
 #%%
 # wfSPM.write_graph(graph2use = 'flat')

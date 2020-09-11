@@ -18,13 +18,16 @@ import nipype.interfaces.io as nio  # Data i/o
 
 #%%
 base_root = '/home/rj299/scratch60/mdm_analysis/'
-data_root = '/home/rj299/scratch60/mdm_analysis/data_rename'
+data_root = '/home/rj299/project/mdm_analysis/output/imaging'
 out_root = '/home/rj299/scratch60/mdm_analysis/output'
 #%%
 data_dir = data_root
 output_dir = os.path.join(out_root, 'imaging')
 work_dir = os.path.join(base_root, 'work') # intermediate products
 
+#subject_list = [2656]
+
+# all subjects
 subject_list = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 
            2596, 2597, 2598, 2599, 2600, 2624, 2650, 2651, 2652, 2653, 
            2654, 2655, 2656, 2657, 2658, 2659, 2660, 2661, 2662, 2663, 
@@ -107,36 +110,36 @@ get_roi_rdm.inputs.stims = {'01': 'Med_amb_24', '02': 'Med_amb_50', '03': 'Med_a
 
         
 # Masker files
-maskfile_vmpfc = os.path.join(output_dir, 'binConjunc_PvNxDECxRECxMONxPRI_vmpfc.nii.gz')
-maskfile_vstr = os.path.join(output_dir, 'binConjunc_PvNxDECxRECxMONxPRI_striatum.nii.gz')
+maskfile_vmpfc = os.path.join(data_dir, 'binConjunc_PvNxDECxRECxMONxPRI_vmpfc.nii.gz')
+maskfile_vstr = os.path.join(data_dir, 'binConjunc_PvNxDECxRECxMONxPRI_striatum.nii.gz')
 
-maskfile_roi1 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p001_roi1.nii.gz')
-maskfile_roi2 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p001_roi2.nii.gz')
-maskfile_roi3 = os.path.join(output_dir, 'none_glm_Med_Mon_TFCE_p001_roi3.nii.gz')
+maskfile_roi1 = os.path.join(data_dir, 'none_glm_Med_Mon_TFCE_p001_roi1.nii.gz')
+maskfile_roi2 = os.path.join(data_dir, 'none_glm_Med_Mon_TFCE_p001_roi2.nii.gz')
+maskfile_roi3 = os.path.join(data_dir, 'none_glm_Med_Mon_TFCE_p001_roi3.nii.gz')
 
-maskfile_gilaie_rppc = os.path.join(output_dir, 'Gilaie-DotanEtAl_2014_Study1_rPPC-NScorr-Thres250Voxels_roi.nii')
+maskfile_gilaie_rppc = os.path.join(data_dir, 'Gilaie-DotanEtAl_2014_Study1_rPPC-NScorr-Thres250Voxels_roi.nii')
 
-maskfile_zhang_val_lppc = os.path.join(output_dir, 'zhang_nn_2017_value_sphere_lppc.nii.gz')
-maskfile_zhang_val_lofc = os.path.join(output_dir, 'zhang_nn_2017_value_sphere_lofc.nii.gz')
-maskfile_zhang_val_rofc = os.path.join(output_dir, 'zhang_nn_2017_value_sphere_rofc.nii.gz')
-maskfile_zhang_val_lingual = os.path.join(output_dir, 'zhang_nn_2017_value_sphere_lingual.nii.gz')
+maskfile_zhang_val_lppc = os.path.join(data_dir, 'zhang_nn_2017_value_sphere_lppc.nii.gz')
+maskfile_zhang_val_lofc = os.path.join(data_dir, 'zhang_nn_2017_value_sphere_lofc.nii.gz')
+maskfile_zhang_val_rofc = os.path.join(data_dir, 'zhang_nn_2017_value_sphere_rofc.nii.gz')
+maskfile_zhang_val_lingual = os.path.join(data_dir, 'zhang_nn_2017_value_sphere_lingual.nii.gz')
 
-maskfile_zhang_sal_acc = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_acc.nii.gz')
-maskfile_zhang_sal_lprecentral = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_lprecentral.nii.gz')
-maskfile_zhang_sal_lcaudate = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_lcaudate.nii.gz')
-maskfile_zhang_sal_rcaudate = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_rcaudate.nii.gz')
-maskfile_zhang_sal_linsula = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_linsula.nii.gz')
-maskfile_zhang_sal_rinsula = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_rinsula.nii.gz')
-maskfile_zhang_sal_lingual = os.path.join(output_dir, 'zhang_nn_2017_saliency_sphere_lingual.nii.gz')
+maskfile_zhang_sal_acc = os.path.join(data_dir, 'zhang_nn_2017_saliency_sphere_acc.nii.gz')
+maskfile_zhang_sal_lprecentral = os.path.join(data_dir, 'zhang_nn_2017_saliency_sphere_lprecentral.nii.gz')
+maskfile_zhang_sal_lcaudate = os.path.join(data_dir, 'zhang_nn_2017_saliency_sphere_lcaudate.nii.gz')
+maskfile_zhang_sal_rcaudate = os.path.join(data_dir, 'zhang_nn_2017_saliency_sphere_rcaudate.nii.gz')
+maskfile_zhang_sal_linsula = os.path.join(data_dir, 'zhang_nn_2017_saliency_sphere_linsula.nii.gz')
+maskfile_zhang_sal_rinsula = os.path.join(data_dir, 'zhang_nn_2017_saliency_sphere_rinsula.nii.gz')
+maskfile_zhang_sal_lingual = os.path.join(data_dir, 'zhang_nn_2017_saliency_sphere_lingual.nii.gz')
 
-maskfile_levy_amb_striatum = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_striatum.nii.gz')
-maskfile_levy_amb_mpfc = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_mpfc.nii.gz')
-maskfile_levy_amb_pcc = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_pcc.nii.gz')
-maskfile_levy_amb_lamyg = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_lamyg.nii.gz')
-maskfile_levy_amb_sts = os.path.join(output_dir, 'levy_jn_2010_ambig_sphere_sts.nii.gz')
+maskfile_levy_amb_striatum = os.path.join(data_dir, 'levy_jn_2010_ambig_sphere_striatum.nii.gz')
+maskfile_levy_amb_mpfc = os.path.join(data_dir, 'levy_jn_2010_ambig_sphere_mpfc.nii.gz')
+maskfile_levy_amb_pcc = os.path.join(data_dir, 'levy_jn_2010_ambig_sphere_pcc.nii.gz')
+maskfile_levy_amb_lamyg = os.path.join(data_dir, 'levy_jn_2010_ambig_sphere_lamyg.nii.gz')
+maskfile_levy_amb_sts = os.path.join(data_dir, 'levy_jn_2010_ambig_sphere_sts.nii.gz')
 
-maskfile_levy_risk_striatum = os.path.join(output_dir, 'levy_jn_2010_risk_sphere_striatum.nii.gz')
-maskfile_levy_risk_mpfc = os.path.join(output_dir, 'levy_jn_2010_risk_sphere_mpfc.nii.gz')
+maskfile_levy_risk_striatum = os.path.join(data_dir, 'levy_jn_2010_risk_sphere_striatum.nii.gz')
+maskfile_levy_risk_mpfc = os.path.join(data_dir, 'levy_jn_2010_risk_sphere_mpfc.nii.gz')
 
 maskfiles = {'vmpfc': maskfile_vmpfc, 
              'vstr': maskfile_vstr, 
@@ -185,4 +188,5 @@ wf_roirdm.connect([
         (get_roi_rdm, datasink_rdm, [('rdm_out', 'rdm_new.@rdm')]),
         ])
 #%% 
-wf_roirdm.run('Linear', plugin_args = {'n_procs': 1})    
+wf_roirdm.run('MultiProc', plugin_args={'n_procs': 4})
+#wf_roirdm.run('Linear', plugin_args = {'n_procs': 1})    
