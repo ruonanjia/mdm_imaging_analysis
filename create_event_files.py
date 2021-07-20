@@ -12,8 +12,8 @@ import scipy.io as spio
 import pandas as pd
 
 #%%
-data_behav_root = '/home/rj299/scratch60/mdm_analysis/data_behav'
-out_root = '/home/rj299/scratch60/mdm_analysis/output'
+data_behav_root = '/home/rj299/project/mdm_analysis/data_behav'
+out_root = '/home/rj299/project/mdm_analysis/output'
 # data_behav_root = 'D:\Ruonan\Projects in the lab\MDM Project\Medical Decision Making Imaging\MDM_imaging\Behavioral Analysis\PTB Behavior Log'
 
 # subjects for imaging analysis
@@ -24,7 +24,7 @@ sub_num = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 2596, 259
 #%% read parameters to calculate SV
 #par = pd.read_csv(os.path.join(data_behav_root, 'par_09300219.csv'))
 par = pd.read_csv(os.path.join(data_behav_root, 'par_mon_ambigNrisk_08220219.csv'))
-
+rating = pd.read_csv(os.path.join(data_behav_root, 'rating_11082019.csv'))
 #%% calculate SV
 def ambig_utility(sub_id, par, p, a, obj_val, domain, model):
     '''
@@ -126,7 +126,7 @@ def loadmat(filename):
     return _check_keys(data)
 
 #%%
-def readConditions(subNum, domain, matFile, x): # takes name of file and when to begin (i.e. first block is zero. second is 21 etc.)
+def readConditions(subNum, domain, matFile, x, rating): # takes name of file and when to begin (i.e. first block is zero. second is 21 etc.)
     """ read condition onset and duration
     Author: Or
     
@@ -136,6 +136,7 @@ def readConditions(subNum, domain, matFile, x): # takes name of file and when to
     domain: domain name, 'Med' or 'Mon'
     matFile: filename
     x: trial index at the begining of each block
+    rating: rating spreadsheet of all participants
     
     Return
     -------------
@@ -147,6 +148,15 @@ def readConditions(subNum, domain, matFile, x): # takes name of file and when to
     data_keyname = list(metaData.keys())[3]    
     # trial number per block
     trial_num = 21 
+    
+    if domain == 'Med':
+        domain_idx = 1
+    else:
+        domain_idx = 0
+        
+    
+    # rating
+    rating_sub = rating[(rating.id == subNum) & (rating.is_med == domain_idx)]
     
     timeStamp = []
     condition = []
@@ -163,6 +173,13 @@ def readConditions(subNum, domain, matFile, x): # takes name of file and when to
     svs, ref_svs = ambig_utility(subNum, par, probs, ambigs, vals, domain, 'ambigNrisk')
     choice = metaData[data_keyname]['choice']
     refside = metaData[data_keyname]['refSide']
+    
+    # trial-wise rating
+    ratings = np.zeros(vals.shape) 
+    ratings[vals == 5] = rating_sub.rating1
+    ratings[vals == 8] = rating_sub.rating2
+    ratings[vals == 12] = rating_sub.rating3
+    ratings[vals == 25] = rating_sub.rating4
     
     # calculate response from choice and refside
     resp = np.ones(choice.shape) # 1-choose lottery
@@ -192,6 +209,7 @@ def readConditions(subNum, domain, matFile, x): # takes name of file and when to
     events= pd.DataFrame({'trial_type':condition, 'onset':timeStamp, 'duration':duration, 
                           'probs': probs[range(x, x+trial_num)], 'ambigs': ambigs[range(x, x+trial_num)], 'vals': vals[range(x, x+trial_num)], 
                           'svs': np.round(svs[range(x, x+trial_num)], 3), 'ref_svs': np.round(ref_svs[range(x, x+trial_num)], 3), 
+                          'ratings': ratings[range(x, x+trial_num)],
                           'resp': resp[range(x, x+trial_num)],
                           'resp_onset': resp_onset})[1:] # building data frame from what we took. Removing first row because its not used. 
     return events
@@ -232,27 +250,27 @@ def organizeBlocks(subNum):
             # run Med mat file on readConcitions function on first two blocks (i.e. 0, 21)
             print (n)
             for x in [0,trial_num]:
-                event = readConditions(subNum, 'Med', mat_med_name, x)
+                event = readConditions(subNum, 'Med', mat_med_name, x, rating)
                 event['condition'] = 'Med'
                 totalEvent.append(event)
         elif n=='1stMon':
             # run Mon mat file on readCondition function
             print (n)
             for x in [0,trial_num]:
-                event = readConditions(subNum, 'Mon', mat_mon_name, x)
+                event = readConditions(subNum, 'Mon', mat_mon_name, x, rating)
                 event['condition'] = 'Mon'
                 totalEvent.append(event)
         elif n=='3rdMed':
             print (n)
             for x in [trial_num*2, trial_num*3]:
-                event = readConditions(subNum, 'Med', mat_med_name, x)
+                event = readConditions(subNum, 'Med', mat_med_name, x, rating)
                 event['condition'] = 'Med'
                 totalEvent.append(event)
         elif n=='3rdMon':
             # run Mon from 3rd block
             print (n)
             for x in [trial_num*2, trial_num*3]:
-                event = readConditions(subNum, 'Mon', mat_mon_name, x)
+                event = readConditions(subNum, 'Mon', mat_mon_name, x, rating)
                 event['condition'] = 'Mon'
                 totalEvent.append(event)
         else:
@@ -298,5 +316,5 @@ for sub_id in sub_num:
     # write into csv
     
     for task_id in range(8):
-        pd.DataFrame(totalEvent_sub[task_id]).to_csv(os.path.join(out_root, 'event_files', 'sub-' + str(sub_id)+ '_task-' +str(task_id+1) + '_cond_v4.csv'), 
+        pd.DataFrame(totalEvent_sub[task_id]).to_csv(os.path.join(out_root, 'event_files', 'sub-' + str(sub_id)+ '_task-' +str(task_id+1) + '_cond_v5.csv'), 
                           index = False, sep = '\t')    
