@@ -24,6 +24,7 @@ sub_num = [2073, 2550, 2582, 2583, 2584, 2585, 2588, 2592, 2593, 2594, 2596, 259
 #%% read parameters to calculate SV
 #par = pd.read_csv(os.path.join(data_behav_root, 'par_09300219.csv'))
 par = pd.read_csv(os.path.join(data_behav_root, 'par_mon_ambigNrisk_08220219.csv'))
+par2 = pd.read_csv(os.path.join(data_behav_root, 'par_ambigSVPar_08022021.csv'))
 rating = pd.read_csv(os.path.join(data_behav_root, 'rating_11082019.csv'))
 #%% calculate SV
 def ambig_utility(sub_id, par, p, a, obj_val, domain, model):
@@ -83,6 +84,37 @@ def ambig_utility(sub_id, par, p, a, obj_val, domain, model):
             ref_sv = np.ones(obj_val.shape) * 5
         
     return sv, ref_sv
+
+#%% calculate model-estimated risk level
+def reward_probability(sub_id, par, p, a, domain):
+    '''
+    Calcualte subjective value based on model
+    For a list of trials
+    
+    Input:
+        sub_id: subject id
+        par: panda data frame of all subjects' parameter fits
+        p: probability of lotteries, vector
+        a: ambiguity of lotteries, vector
+        domain_idx: domian index, 1-medical, 0-monetary
+        
+    Output:
+        risk_level: risk level (reward probability) of lotteries, vector. For 
+        risky trials, these are just the reward probability. For ambiguous
+        trials, these are the model-estimated reward probability.
+    '''    
+    
+    if domain == 'Med':
+        domain_idx = 1
+    elif domain == 'Mon':
+        domain_idx = 0
+    
+    par_sub = par[(par.id == sub_id) & (par.is_med == domain_idx)]
+    beta = par_sub.iloc[0]['beta']
+    
+    reward_prob = p - beta * a/2
+    
+    return reward_prob
 
 #%%
 def _todict(matobj):
@@ -171,6 +203,7 @@ def readConditions(subNum, domain, matFile, x, rating): # takes name of file and
     vals = metaData[data_keyname]['vals']
 #    svs, ref_svs = ambig_utility(subNum, par, probs, ambigs, vals, domain, 'ambigSVPar')
     svs, ref_svs = ambig_utility(subNum, par, probs, ambigs, vals, domain, 'ambigNrisk')
+    reward_prob = reward_probability(subNum, par2, probs, ambigs, domain)
     choice = metaData[data_keyname]['choice']
     refside = metaData[data_keyname]['refSide']
     
@@ -209,6 +242,7 @@ def readConditions(subNum, domain, matFile, x, rating): # takes name of file and
     events= pd.DataFrame({'trial_type':condition, 'onset':timeStamp, 'duration':duration, 
                           'probs': probs[range(x, x+trial_num)], 'ambigs': ambigs[range(x, x+trial_num)], 'vals': vals[range(x, x+trial_num)], 
                           'svs': np.round(svs[range(x, x+trial_num)], 3), 'ref_svs': np.round(ref_svs[range(x, x+trial_num)], 3), 
+                          'reward_prob': np.round(reward_prob[range(x, x+trial_num)], 3),
                           'ratings': ratings[range(x, x+trial_num)],
                           'resp': resp[range(x, x+trial_num)],
                           'resp_onset': resp_onset})[1:] # building data frame from what we took. Removing first row because its not used. 
@@ -316,5 +350,5 @@ for sub_id in sub_num:
     # write into csv
     
     for task_id in range(8):
-        pd.DataFrame(totalEvent_sub[task_id]).to_csv(os.path.join(out_root, 'event_files', 'sub-' + str(sub_id)+ '_task-' +str(task_id+1) + '_cond_v5.csv'), 
+        pd.DataFrame(totalEvent_sub[task_id]).to_csv(os.path.join(out_root, 'event_files', 'sub-' + str(sub_id)+ '_task-' +str(task_id+1) + '_cond_v6.csv'), 
                           index = False, sep = '\t')    
